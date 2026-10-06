@@ -182,7 +182,13 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        handleCloseTab(relPath);
+        setTabs((prev) => {
+          const remaining = prev.filter((t) => t.path !== relPath && !t.path.startsWith(relPath + '/'));
+          if (!remaining.find((t) => t.path === activeTabPath)) {
+            setActiveTabPath(remaining.length > 0 ? remaining[remaining.length - 1].path : null);
+          }
+          return remaining;
+        });
         fetchTree();
       } else {
         alert(data.error);
@@ -202,16 +208,24 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        // update tabs if renamed
+        const newName = newPath.split('/').pop();
         setTabs((prev) =>
-          prev.map((t) =>
-            t.path === oldPath
-              ? { ...t, path: newPath, name: newPath.split('/').pop() }
-              : t
-          )
+          prev.map((t) => {
+            if (t.path === oldPath) {
+              return { ...t, path: newPath, name: newName };
+            }
+            if (t.path.startsWith(oldPath + '/')) {
+              const subPath = t.path.slice(oldPath.length);
+              return { ...t, path: `${newPath}${subPath}` };
+            }
+            return t;
+          })
         );
         if (activeTabPath === oldPath) {
           setActiveTabPath(newPath);
+        } else if (activeTabPath && activeTabPath.startsWith(oldPath + '/')) {
+          const subPath = activeTabPath.slice(oldPath.length);
+          setActiveTabPath(`${newPath}${subPath}`);
         }
         fetchTree();
       } else {
@@ -219,6 +233,48 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // File Operations: Move
+  const handleMoveItem = async (sourcePath, targetDir) => {
+    try {
+      const fileName = sourcePath.split('/').pop();
+      const destPath = targetDir ? `${targetDir}/${fileName}` : fileName;
+      if (destPath === sourcePath) return;
+
+      const res = await fetch('/api/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourcePath, targetDir })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTabs((prev) =>
+          prev.map((t) => {
+            if (t.path === sourcePath) {
+              return { ...t, path: destPath, name: fileName };
+            }
+            if (t.path.startsWith(sourcePath + '/')) {
+              const subPath = t.path.slice(sourcePath.length);
+              return { ...t, path: `${destPath}${subPath}` };
+            }
+            return t;
+          })
+        );
+        if (activeTabPath === sourcePath) {
+          setActiveTabPath(destPath);
+        } else if (activeTabPath && activeTabPath.startsWith(sourcePath + '/')) {
+          const subPath = activeTabPath.slice(sourcePath.length);
+          setActiveTabPath(`${destPath}${subPath}`);
+        }
+        await fetchTree();
+      } else {
+        alert(data.error || 'Gagal memindahkan item.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Gagal memindahkan item.');
     }
   };
 
@@ -295,6 +351,7 @@ export default function App() {
           onCreateItem={handleCreateItem}
           onDeleteItem={handleDeleteItem}
           onRenameItem={handleRenameItem}
+          onMoveItem={handleMoveItem}
           editorSettings={editorSettings}
           setEditorSettings={setEditorSettings}
         />

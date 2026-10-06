@@ -169,8 +169,47 @@ app.post('/api/rename', (req, res) => {
       return res.status(400).json({ error: 'Target name already exists' });
     }
 
+    fs.mkdirSync(path.dirname(targetNew), { recursive: true });
     fs.renameSync(targetOld, targetNew);
     res.json({ success: true, message: 'Renamed successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 7. Move file or folder into another directory
+app.post('/api/move', (req, res) => {
+  try {
+    const { sourcePath, targetDir } = req.body;
+    if (!sourcePath) return res.status(400).json({ error: 'sourcePath is required' });
+
+    const cleanSource = sourcePath.replace(/\\/g, '/').replace(/^\/+/, '');
+    const cleanTargetDir = (targetDir || '').replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+
+    // Prevent moving a folder into itself or its descendants
+    if (cleanTargetDir === cleanSource || cleanTargetDir.startsWith(cleanSource + '/')) {
+      return res.status(400).json({ error: 'Tidak dapat memindahkan folder ke dalam dirinya sendiri.' });
+    }
+
+    const sourceFullPath = getSafePath(cleanSource);
+    const itemName = path.basename(sourceFullPath);
+    const destDirFullPath = getSafePath(cleanTargetDir);
+    const destFullPath = path.join(destDirFullPath, itemName);
+
+    if (!fs.existsSync(sourceFullPath)) {
+      return res.status(404).json({ error: 'Item sumber tidak ditemukan.' });
+    }
+    if (sourceFullPath === destFullPath) {
+      return res.json({ success: true, message: 'Item sudah berada di lokasi tujuan.' });
+    }
+    if (fs.existsSync(destFullPath)) {
+      return res.status(400).json({ error: `Item "${itemName}" sudah ada di folder tujuan.` });
+    }
+
+    fs.mkdirSync(destDirFullPath, { recursive: true });
+    fs.renameSync(sourceFullPath, destFullPath);
+
+    res.json({ success: true, message: 'Item berhasil dipindahkan.' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
