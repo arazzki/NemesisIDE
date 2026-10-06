@@ -18,6 +18,7 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState('');
   
   const [cursorPosition, setCursorPosition] = useState({ line: 1, col: 1 });
+  const [workspaceInfo, setWorkspaceInfo] = useState({ path: '', name: 'Workspace' });
   const [editorSettings, setEditorSettings] = useState({
     theme: 'nemesis-dark',
     fontSize: 14,
@@ -25,6 +26,20 @@ export default function App() {
     wordWrap: 'on',
     minimap: true
   });
+
+  // Fetch current workspace info
+  const fetchWorkspaceInfo = useCallback(async () => {
+    try {
+      const res = await fetch('/api/workspace');
+      const data = await res.json();
+      if (data.success) {
+        setWorkspaceInfo({ path: data.path, name: data.name });
+        document.title = data.name ? `${data.name} - Nemesis IDE` : 'Nemesis IDE';
+      }
+    } catch (e) {
+      console.warn('Failed to fetch workspace info:', e);
+    }
+  }, []);
 
   // Fetch workspace file tree
   const fetchTree = useCallback(async () => {
@@ -41,6 +56,49 @@ export default function App() {
       setServerStatus('disconnected');
     }
   }, []);
+
+  // Open folder action (Electron native dialog, PowerShell fallback, or explicit path)
+  const handleOpenFolder = async (explicitPath = null) => {
+    try {
+      let targetPath = explicitPath;
+
+      if (!targetPath) {
+        if (window.electronAPI && typeof window.electronAPI.openFolderDialog === 'function') {
+          targetPath = await window.electronAPI.openFolderDialog();
+        } else {
+          // Web / browser fallback: call server pick endpoint
+          const pickRes = await fetch('/api/workspace/pick', { method: 'POST' });
+          const pickData = await pickRes.json();
+          if (pickData.success) {
+            targetPath = pickData.path;
+          }
+        }
+      }
+
+      if (!targetPath) return; // User canceled
+
+      const res = await fetch('/api/workspace', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dir: targetPath })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setWorkspaceInfo({ path: data.path, name: data.name });
+        document.title = `${data.name} - Nemesis IDE`;
+        setTabs([]);
+        setActiveTabPath(null);
+        await fetchTree();
+        setTerminalOutput((prev) => prev + `\n> [Nemesis IDE] Membuka project folder: ${data.name} (${data.path})\n`);
+      } else {
+        alert(data.error || 'Gagal membuka folder project.');
+      }
+    } catch (err) {
+      console.error('Error opening folder:', err);
+      alert('Terjadi kesalahan saat membuka folder project.');
+    }
+  };
 
   // Open a file into a tab
   const handleOpenFile = async (filePath) => {
@@ -72,8 +130,9 @@ export default function App() {
     }
   };
 
-  // Initial load: fetch tree and open default file if available
+  // Initial load: fetch workspace and file tree
   useEffect(() => {
+    fetchWorkspaceInfo();
     fetchTree().then((initialTree) => {
       if (initialTree && initialTree.length > 0) {
         const firstFile = initialTree.find((i) => i.type === 'file') || (initialTree[0].children && initialTree[0].children[0]);
@@ -82,7 +141,33 @@ export default function App() {
         }
       }
     });
-  }, [fetchTree]);
+  }, [fetchTree, fetchWorkspaceInfo]);
+
+  // Global keyboard shortcuts (Ctrl+O to open folder)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        handleOpenFolder();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Global drag-and-drop: drop a folder from Windows Desktop into the IDE
+  const handleGlobalDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      const filePath = (window.electronAPI && typeof window.electronAPI.getPathForFile === 'function')
+        ? window.electronAPI.getPathForFile(file)
+        : file.path;
+      if (filePath) {
+        handleOpenFolder(filePath);
+      }
+    }
+  };
 
   // Tab management
   const handleSelectTab = (path) => {
@@ -328,7 +413,11 @@ export default function App() {
   const activeTab = tabs.find((t) => t.path === activeTabPath);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#18181b] text-gray-200">
+    <div 
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleGlobalDrop}
+      className="flex flex-col h-screen w-screen overflow-hidden bg-[#18181b] text-gray-200"
+    >
       {/* Top Main Workspace Container */}
       <div className="flex flex-1 overflow-hidden">
         {/* Leftmost Activity Bar */}
@@ -346,6 +435,8 @@ export default function App() {
           activeView={activeView}
           tree={tree}
           activeTabPath={activeTabPath}
+          workspaceInfo={workspaceInfo}
+          onOpenFolder={handleOpenFolder}
           onOpenFile={handleOpenFile}
           onRefresh={fetchTree}
           onCreateItem={handleCreateItem}
@@ -361,6 +452,8 @@ export default function App() {
           <EditorArea
             tabs={tabs}
             activeTabPath={activeTabPath}
+            workspaceInfo={workspaceInfo}
+            onOpenFolder={handleOpenFolder}
             onSelectTab={handleSelectTab}
             onCloseTab={handleCloseTab}
             onContentChange={handleContentChange}

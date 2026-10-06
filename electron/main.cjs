@@ -1,10 +1,25 @@
-const { app, BrowserWindow, shell, dialog } = require('electron');
+const { app, BrowserWindow, shell, dialog, ipcMain } = require('electron');
 const path = require('path');
 const http = require('http');
 const { pathToFileURL } = require('url');
 
 let mainWindow = null;
 let activeServer = null;
+
+// -------------------------------------------------------------
+// Native Dialog IPC Handlers
+// -------------------------------------------------------------
+ipcMain.handle('dialog:openDirectory', async () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory', 'createDirectory'],
+    title: 'Pilih Folder Project untuk Dibuka di Nemesis IDE'
+  });
+  if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+    return null;
+  }
+  return result.filePaths[0];
+});
 
 const PORT = process.env.PORT || 3001;
 const DEV_URL = process.env.ELECTRON_DEV_URL || 'http://localhost:5173';
@@ -105,7 +120,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      spellcheck: false
+      spellcheck: false,
+      preload: path.join(__dirname, 'preload.cjs')
     }
   });
 

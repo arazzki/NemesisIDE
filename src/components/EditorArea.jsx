@@ -1,12 +1,14 @@
 import React, { useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { X, Play, Save, Code } from 'lucide-react';
+import { X, Play, Save, Code, FolderOpen } from 'lucide-react';
 import { getLanguageFromPath, getFileBadgeColor, getLanguageName } from '../utils/languageHelper';
 import { registerAllSnippets } from '../utils/snippets';
 
 export default function EditorArea({
   tabs,
   activeTabPath,
+  workspaceInfo,
+  onOpenFolder,
   onSelectTab,
   onCloseTab,
   onContentChange,
@@ -229,18 +231,31 @@ export default function EditorArea({
         ) : (
           /* Empty / Welcome State */
           <div className="h-full flex flex-col items-center justify-center text-zinc-400 select-none p-6">
-            <div className="flex flex-col items-center mb-4">
+            <div className="flex flex-col items-center mb-3">
               <img 
                 src="/banner.png" 
                 alt="Nemesis IDE" 
                 className="w-72 h-auto object-contain rounded-xl drop-shadow-[0_10px_25px_rgba(168,85,247,0.25)]" 
               />
             </div>
-            <p className="text-xs text-zinc-400 mb-6 text-center max-w-sm">
-              Custom IDE dengan pewarnaan sintaks kaya warna untuk Python, Java, JavaScript, Dart, C++, C#, Go, Rust, dan lainnya.
+            <p className="text-xs text-zinc-400 mb-5 text-center max-w-sm">
+              Tarik & lepaskan (Drag & drop) folder dari Desktop ke sini, atau klik tombol di bawah untuk membuka project.
             </p>
 
+            <button
+              onClick={() => onOpenFolder && onOpenFolder()}
+              className="mb-6 flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-lg shadow-blue-500/20 border border-blue-400/30 transition-all hover:scale-105"
+            >
+              <FolderOpen size={15} className="text-amber-300" />
+              <span>Buka Folder dari Desktop / PC</span>
+              <kbd className="bg-white/20 text-blue-100 text-[10px] px-1.5 py-0.5 rounded font-mono ml-1.5">Ctrl+O</kbd>
+            </button>
+
             <div className="bg-[#18181b] border border-[#27272a] rounded-lg p-4 w-72 text-xs space-y-2.5">
+              <div className="flex justify-between items-center text-zinc-400">
+                <span>Buka Folder Project</span>
+                <kbd className="bg-[#27272a] text-blue-300 px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl + O</kbd>
+              </div>
               <div className="flex justify-between items-center text-zinc-400">
                 <span>Code Snippet</span>
                 <kbd className="bg-[#27272a] text-blue-300 px-1.5 py-0.5 rounded text-[11px] font-mono">sout, clg, pr + Tab</kbd>

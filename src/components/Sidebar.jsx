@@ -309,6 +309,8 @@ export default function Sidebar({
   activeView,
   tree,
   activeTabPath,
+  workspaceInfo,
+  onOpenFolder,
   onOpenFile,
   onRefresh,
   onCreateItem,
@@ -499,12 +501,26 @@ export default function Sidebar({
             </div>
           </div>
         ) : (
-          <span className="text-xs font-bold tracking-wider uppercase text-zinc-400 truncate">
-            WORKSPACE
-          </span>
+          <div 
+            className="flex items-center space-x-1.5 truncate max-w-[125px] cursor-pointer group/title"
+            onClick={() => onOpenFolder && onOpenFolder()}
+            title={`Project: ${workspaceInfo?.path || 'Workspace'}\nKlik untuk ganti folder project (Ctrl+O)`}
+          >
+            <FolderOpen size={14} className="text-blue-400 shrink-0 group-hover/title:text-blue-300" />
+            <span className="text-xs font-bold tracking-wider uppercase text-zinc-300 group-hover/title:text-white truncate">
+              {workspaceInfo?.name || 'WORKSPACE'}
+            </span>
+          </div>
         )}
 
         <div className="flex items-center space-x-1">
+          <button
+            onClick={() => onOpenFolder && onOpenFolder()}
+            title="Buka Folder Project (Desktop / PC) [Ctrl+O]"
+            className="p-1 hover:bg-[#27272a] text-zinc-400 hover:text-white rounded"
+          >
+            <FolderOpen size={14} />
+          </button>
           <button
             onClick={() => {
               setNewPrompt({ type: 'file', targetDir: selectedFolder || '' });
@@ -513,7 +529,7 @@ export default function Sidebar({
             title={selectedFolder ? `File Baru di /${selectedFolder}` : 'File Baru di Root'}
             className="p-1 hover:bg-[#27272a] text-zinc-400 hover:text-white rounded"
           >
-            <FilePlus size={15} />
+            <FilePlus size={14} />
           </button>
           <button
             onClick={() => {
@@ -523,14 +539,14 @@ export default function Sidebar({
             title={selectedFolder ? `Folder Baru di /${selectedFolder}` : 'Folder Baru di Root'}
             className="p-1 hover:bg-[#27272a] text-zinc-400 hover:text-white rounded"
           >
-            <FolderPlus size={15} />
+            <FolderPlus size={14} />
           </button>
           <button
             onClick={onRefresh}
             title="Refresh File Tree"
             className="p-1 hover:bg-[#27272a] text-zinc-400 hover:text-white rounded"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={13} />
           </button>
         </div>
       </div>
@@ -593,8 +609,27 @@ export default function Sidebar({
         }`}
       >
         {tree.length === 0 ? (
-          <div className="text-center py-8 text-xs text-zinc-500 px-3">
-            Workspace kosong. Gunakan tombol + di atas untuk membuat file atau folder baru!
+          <div className="text-center py-8 px-3 text-xs text-zinc-400 space-y-3">
+            <p className="text-zinc-500">Folder project ini kosong.</p>
+            <div className="flex flex-col space-y-2">
+              <button
+                onClick={() => {
+                  setNewPrompt({ type: 'file', targetDir: '' });
+                  setItemNameInput('');
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-1.5 px-3 rounded flex items-center justify-center space-x-1.5 font-medium transition-colors"
+              >
+                <FilePlus size={14} />
+                <span>Buat File Baru</span>
+              </button>
+              <button
+                onClick={() => onOpenFolder && onOpenFolder()}
+                className="w-full bg-[#27272a] hover:bg-[#3f3f46] text-zinc-200 py-1.5 px-3 rounded flex items-center justify-center space-x-1.5 border border-[#3f3f46] transition-colors"
+              >
+                <FolderOpen size={14} className="text-amber-400" />
+                <span>Buka Folder Lain (Desktop / PC)</span>
+              </button>
+            </div>
           </div>
         ) : (
           tree.map((item) => (
@@ -625,6 +660,17 @@ export default function Sidebar({
         >
           {contextMenu.isRoot ? (
             <>
+              <button
+                onClick={() => {
+                  onOpenFolder && onOpenFolder();
+                  setContextMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white flex items-center space-x-2"
+              >
+                <FolderOpen size={13} className="text-amber-400" />
+                <span>Buka Folder Project...</span>
+              </button>
+              <div className="border-t border-[#2e2e33] my-1" />
               <button
                 onClick={() => {
                   setNewPrompt({ type: 'file', targetDir: '' });

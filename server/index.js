@@ -12,10 +12,39 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Define workspace path (defaults to local workspace, or User Home if packaged in asar)
-let WORKSPACE_DIR = path.resolve(__dirname, '..', 'workspace');
-if (__dirname.includes('app.asar')) {
-  const userHome = process.env.USERPROFILE || process.env.HOME || '.';
+const userHome = process.env.USERPROFILE || process.env.HOME || '.';
+const configDir = path.join(userHome, '.nemesis-ide');
+const configFile = path.join(configDir, 'workspace.json');
+
+function loadSavedWorkspace() {
+  try {
+    if (fs.existsSync(configFile)) {
+      const data = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+      if (data.workspace && fs.existsSync(data.workspace) && fs.statSync(data.workspace).isDirectory()) {
+        return path.resolve(data.workspace);
+      }
+    }
+  } catch (e) {
+    console.warn('[Workspace] Failed to load saved config:', e.message);
+  }
+  return null;
+}
+
+function saveWorkspace(dir) {
+  try {
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+    fs.writeFileSync(configFile, JSON.stringify({ workspace: dir }, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('[Workspace] Failed to save config:', e.message);
+  }
+}
+
+// Define workspace path (defaults to saved workspace, or local workspace folder)
+const savedWorkspace = loadSavedWorkspace();
+let WORKSPACE_DIR = savedWorkspace || path.resolve(__dirname, '..', 'workspace');
+if (!savedWorkspace && __dirname.includes('app.asar')) {
   WORKSPACE_DIR = path.join(userHome, 'NemesisIDE_Workspace');
 }
 
@@ -62,6 +91,76 @@ function getFileTree(dir, relativeTo = WORKSPACE_DIR) {
       };
     });
 }
+
+// 0. Get current active workspace
+app.get('/api/workspace', (req, res) => {
+  res.json({
+    success: true,
+    path: WORKSPACE_DIR,
+    name: path.basename(WORKSPACE_DIR) || WORKSPACE_DIR,
+  });
+});
+
+// 0. Set active workspace directory
+app.post('/api/workspace', (req, res) => {
+  try {
+    const { dir } = req.body;
+    if (!dir) return res.status(400).json({ error: 'Direktori folder wajib diisi.' });
+
+    const targetDir = path.resolve(dir);
+    if (!fs.existsSync(targetDir)) {
+      return res.status(404).json({ error: 'Folder tidak ditemukan di sistem.' });
+    }
+    if (!fs.statSync(targetDir).isDirectory()) {
+      return res.status(400).json({ error: 'Jalur yang dipilih bukan merupakan folder direktori.' });
+    }
+
+    WORKSPACE_DIR = targetDir;
+    saveWorkspace(WORKSPACE_DIR);
+
+    res.json({
+      success: true,
+      message: 'Workspace berhasil diganti',
+      path: WORKSPACE_DIR,
+      name: path.basename(WORKSPACE_DIR) || WORKSPACE_DIR,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 0. Open native folder browser dialog via PowerShell fallback (if not in Electron)
+app.post('/api/workspace/pick', (req, res) => {
+  if (process.platform === 'win32') {
+    const psScript = `
+      Add-Type -AssemblyName System.Windows.Forms
+      $f = New-Object System.Windows.Forms.FolderBrowserDialog
+      $f.Description = "Pilih Folder Project untuk Nemesis IDE"
+      $f.ShowNewFolderButton = $true
+      if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        Write-Output $f.SelectedPath
+      }
+    `;
+    const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript]);
+    let out = '';
+    child.stdout.on('data', d => out += d);
+    child.on('close', () => {
+      const selected = out.trim();
+      if (selected && fs.existsSync(selected) && fs.statSync(selected).isDirectory()) {
+        WORKSPACE_DIR = path.resolve(selected);
+        saveWorkspace(WORKSPACE_DIR);
+        return res.json({
+          success: true,
+          path: WORKSPACE_DIR,
+          name: path.basename(WORKSPACE_DIR) || WORKSPACE_DIR
+        });
+      }
+      res.json({ success: false, message: 'Pemilihan folder dibatalkan.' });
+    });
+  } else {
+    res.status(400).json({ error: 'Native dialog fallback hanya didukung di Windows.' });
+  }
+});
 
 // 1. Get workspace directory tree
 app.get('/api/tree', (req, res) => {
