@@ -363,9 +363,20 @@ app.get('/api/run', (req, res) => {
         args = ['--experimental-strip-types', fileName];
       }
     } else if (ext === '.java') {
-      // In Java 11+, single-file source code programs can be run directly with `java <file.java>`!
-      command = 'java';
-      args = [fileName];
+      command = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
+      // Detect if file has a package declaration
+      let targetClassName = fileNameWithoutExt;
+      try {
+        const fileContent = fs.readFileSync(fullPath, 'utf8');
+        const pkgMatch = fileContent.match(/^\s*package\s+([\w\.]+)\s*;/m);
+        if (pkgMatch) {
+          targetClassName = `${pkgMatch[1]}.${fileNameWithoutExt}`;
+        }
+      } catch (e) {}
+
+      // Compile all .java in directory with javac so multi-class/multi-file projects resolve each other
+      const compileCmd = `javac -encoding UTF-8 -d . *.java && java ${targetClassName}`;
+      args = process.platform === 'win32' ? ['/c', compileCmd] : ['-c', compileCmd];
     } else if (ext === '.dart') {
       command = 'dart';
       args = ['run', fileName];
