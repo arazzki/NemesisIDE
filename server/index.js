@@ -278,8 +278,18 @@ app.get('/api/run', (req, res) => {
     return;
   }
 
+  const spawnEnv = {
+    ...process.env,
+    PYTHONIOENCODING: 'utf-8',
+    PYTHONUTF8: '1',
+    PYTHONUNBUFFERED: '1',
+    LANG: 'en_US.UTF-8',
+    LC_ALL: 'en_US.UTF-8',
+  };
+
   const child = spawn(command, args, {
     cwd: runCwd,
+    env: spawnEnv,
     shell: useShell,
   });
 
