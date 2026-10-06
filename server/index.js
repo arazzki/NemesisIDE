@@ -278,8 +278,23 @@ app.get('/api/run', (req, res) => {
     return;
   }
 
+  const knownBinPaths = [
+    'E:\\msys64\\ucrt64\\bin',
+    'E:\\msys64\\usr\\bin',
+    'C:\\msys64\\ucrt64\\bin',
+    'C:\\msys64\\usr\\bin',
+    'E:\\Flutter\\flutter_windows_3.47.5-stable\\flutter\\bin',
+  ].filter(p => fs.existsSync(p));
+
+  const currentPath = process.env.PATH || process.env.Path || '';
+  const augmentedPath = knownBinPaths.length > 0
+    ? `${knownBinPaths.join(';')};${currentPath}`
+    : currentPath;
+
   const spawnEnv = {
     ...process.env,
+    PATH: augmentedPath,
+    Path: augmentedPath,
     PYTHONIOENCODING: 'utf-8',
     PYTHONUTF8: '1',
     PYTHONUNBUFFERED: '1',
