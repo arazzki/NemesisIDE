@@ -5,11 +5,44 @@
   "private": false,
   "license": "MIT",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "server": "node server/index.js",
     "client": "vite",
     "dev": "concurrently \"node server/index.js\" \"vite\"",
-    "build": "vite build"
+    "build": "vite build",
+    "desktop:dev": "concurrently -k \"node server/index.js\" \"vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
+    "desktop:preview": "npm run build && electron .",
+    "desktop:dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.arazzki.nemesiside",
+    "productName": "Nemesis IDE",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "server/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "server/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Nemesis IDE"
+    }
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -23,8 +56,12 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.2",
+    "cross-env": "^10.1.0",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "wait-on": "^9.5.1"
   }
 }

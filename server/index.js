@@ -10,10 +10,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
-// Define workspace path
-const WORKSPACE_DIR = path.resolve(__dirname, '..', 'workspace');
+// Define workspace path (defaults to local workspace, or User Home if packaged in asar)
+let WORKSPACE_DIR = path.resolve(__dirname, '..', 'workspace');
+if (__dirname.includes('app.asar')) {
+  const userHome = process.env.USERPROFILE || process.env.HOME || '.';
+  WORKSPACE_DIR = path.join(userHome, 'NemesisIDE_Workspace');
+}
 
 // Ensure workspace directory exists
 if (!fs.existsSync(WORKSPACE_DIR)) {
@@ -295,6 +299,16 @@ app.get('/api/run', (req, res) => {
     }
   });
 });
+
+// Serve frontend build if dist folder exists (for production & Electron desktop app)
+const DIST_DIR = path.resolve(__dirname, '..', 'dist');
+if (fs.existsSync(DIST_DIR)) {
+  app.use(express.static(DIST_DIR));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(DIST_DIR, 'index.html'));
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`Nemesis IDE Backend berjalan di http://localhost:${PORT}`);

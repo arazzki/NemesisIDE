@@ -95,12 +95,24 @@ cd NemesisIDE
 npm install
 ```
 
-### 3. Run development mode
+### 3. Run development mode (Web Browser)
 ```bash
 npm run dev
 ```
 
 Both the backend server (`http://localhost:3001`) and frontend app (`http://localhost:5173`) will boot up concurrently. Open your browser at `http://localhost:5173` to start coding!
+
+### 4. Run as Standalone Desktop App (Electron)
+```bash
+# Mode Desktop Development (live hot-reload)
+npm run desktop:dev
+
+# Mode Desktop Production Preview
+npm run desktop:preview
+
+# Package ke file biner Windows (.exe di folder release/)
+npm run desktop:dist
+```
 
 ---
 
@@ -137,7 +149,7 @@ NemesisIDE/
 We welcome open-source contributors of all skill levels! Here are some features on our roadmap that you can help build:
 
 - [ ] **LSP Integration**: Add Language Server Protocol support via WebSocket for auto-imports and diagnostics.
-- [ ] **Electron Wrapper**: Package Nemesis IDE as a standalone native desktop binary (`.exe`, `.dmg`, `.AppImage`).
+- [x] **Electron Wrapper**: Package Nemesis IDE as a standalone native desktop binary (`.exe`, `.dmg`, `.AppImage`).
 - [ ] **Git Integration**: Sidebar panel for Git diff, stage, commit, and push.
 - [ ] **Tab Split View**: Support split editor layout (side-by-side editing).
 - [ ] **Search across Files**: Global regex search and replace across the workspace.
