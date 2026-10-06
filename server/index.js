@@ -250,18 +250,24 @@ app.get('/api/run', (req, res) => {
     } else if (ext === '.c') {
       command = 'cmd.exe';
       const outExe = `${fileNameWithoutExt}.exe`;
-      args = ['/c', `gcc "${fileName}" -o "${outExe}" && "${outExe}"`];
+      const qFile = fileName.includes(' ') ? `"${fileName}"` : fileName;
+      const qExe = outExe.includes(' ') ? `"${outExe}"` : outExe;
+      args = ['/c', `gcc ${qFile} -o ${qExe} && ${qExe}`];
     } else if (ext === '.cpp' || ext === '.cc') {
       command = 'cmd.exe';
       const outExe = `${fileNameWithoutExt}.exe`;
-      args = ['/c', `g++ "${fileName}" -o "${outExe}" && "${outExe}"`];
+      const qFile = fileName.includes(' ') ? `"${fileName}"` : fileName;
+      const qExe = outExe.includes(' ') ? `"${outExe}"` : outExe;
+      args = ['/c', `g++ ${qFile} -o ${qExe} && ${qExe}`];
     } else if (ext === '.go') {
       command = 'go';
       args = ['run', fileName];
     } else if (ext === '.rs') {
       command = 'cmd.exe';
       const outExe = `${fileNameWithoutExt}.exe`;
-      args = ['/c', `rustc "${fileName}" -o "${outExe}" && "${outExe}"`];
+      const qFile = fileName.includes(' ') ? `"${fileName}"` : fileName;
+      const qExe = outExe.includes(' ') ? `"${outExe}"` : outExe;
+      args = ['/c', `rustc ${qFile} -o ${qExe} && ${qExe}`];
     } else if (ext === '.php') {
       command = 'php';
       args = [fileName];
@@ -302,10 +308,13 @@ app.get('/api/run', (req, res) => {
     LC_ALL: 'en_US.UTF-8',
   };
 
+  const isWinCmd = process.platform === 'win32' && (command === 'cmd.exe' || command === 'cmd');
+
   const child = spawn(command, args, {
     cwd: runCwd,
     env: spawnEnv,
     shell: useShell,
+    windowsVerbatimArguments: isWinCmd,
   });
 
   child.stdout.on('data', (chunk) => {
