@@ -5,11 +5,24 @@
 
 export const languageSnippets = {
   java: [
+    // Output shortcuts
     {
       label: 'sout',
       detail: 'System.out.println(...)',
       insertText: 'System.out.println(${1});',
-      documentation: 'Prints a line to standard output (Java shortcut)'
+      documentation: 'Prints a line to standard output'
+    },
+    {
+      label: 'soutv',
+      detail: 'System.out.println("var = " + var)',
+      insertText: 'System.out.println("${1:var} = " + ${1:var});',
+      documentation: 'Prints a variable name and its value to standard output'
+    },
+    {
+      label: 'soutm',
+      detail: 'System.out.println("MethodName()")',
+      insertText: 'System.out.println("${1:Method}()");',
+      documentation: 'Prints method name'
     },
     {
       label: 'serr',
@@ -17,6 +30,8 @@ export const languageSnippets = {
       insertText: 'System.err.println(${1});',
       documentation: 'Prints a line to standard error output'
     },
+
+    // Method & Main declarations
     {
       label: 'psvm',
       detail: 'public static void main(...)',
@@ -30,10 +45,92 @@ export const languageSnippets = {
       documentation: 'Main method declaration'
     },
     {
+      label: 'm',
+      detail: 'public void methodName(...) { ... }',
+      insertText: 'public ${1:void} ${2:methodName}(${3}) {\n\t${4}\n}',
+      documentation: 'Public method declaration'
+    },
+    {
+      label: 'pm',
+      detail: 'private void methodName(...) { ... }',
+      insertText: 'private ${1:void} ${2:methodName}(${3}) {\n\t${4}\n}',
+      documentation: 'Private method declaration'
+    },
+    {
+      label: 'ctor',
+      detail: 'public ClassName(...) { ... }',
+      insertText: 'public ${1:ClassName}(${2}) {\n\t${3}\n}',
+      documentation: 'Constructor declaration'
+    },
+
+    // Conditionals
+    {
+      label: 'if',
+      detail: 'if (condition) { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n}',
+      documentation: 'If statement'
+    },
+    {
+      label: 'ifelse',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block'
+    },
+    {
+      label: 'ife',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block (shorthand)'
+    },
+    {
+      label: 'elseif',
+      detail: 'else if (condition) { ... }',
+      insertText: 'else if (${1:condition}) {\n\t${2}\n}',
+      documentation: 'Else-If clause'
+    },
+    {
+      label: 'elif',
+      detail: 'else if (condition) { ... }',
+      insertText: 'else if (${1:condition}) {\n\t${2}\n}',
+      documentation: 'Else-If clause (shorthand)'
+    },
+    {
+      label: 'else',
+      detail: 'else { ... }',
+      insertText: 'else {\n\t${1}\n}',
+      documentation: 'Else block'
+    },
+    {
+      label: 'switch',
+      detail: 'switch (key) { case ... }',
+      insertText: 'switch (${1:key}) {\n\tcase ${2:value}:\n\t\t${3}\n\t\tbreak;\n\tdefault:\n\t\t${4}\n\t\tbreak;\n}',
+      documentation: 'Switch statement with default case'
+    },
+    {
+      label: 'ifn',
+      detail: 'if (var == null) { ... }',
+      insertText: 'if (${1:var} == null) {\n\t${2}\n}',
+      documentation: 'If null check'
+    },
+    {
+      label: 'inn',
+      detail: 'if (var != null) { ... }',
+      insertText: 'if (${1:var} != null) {\n\t${2}\n}',
+      documentation: 'If not null check'
+    },
+
+    // Loops
+    {
       label: 'fori',
       detail: 'for (int i = 0; i < max; i++)',
       insertText: 'for (int ${1:i} = 0; ${1:i} < ${2:max}; ${1:i}++) {\n\t${3}\n}',
       documentation: 'Standard indexed for-loop'
+    },
+    {
+      label: 'forr',
+      detail: 'for (int i = max; i >= 0; i--)',
+      insertText: 'for (int ${1:i} = ${2:max}; ${1:i} >= 0; ${1:i}--) {\n\t${3}\n}',
+      documentation: 'Reverse indexed for-loop'
     },
     {
       label: 'fore',
@@ -42,10 +139,108 @@ export const languageSnippets = {
       documentation: 'Enhanced for-each loop'
     },
     {
+      label: 'iter',
+      detail: 'for (Type item : collection)',
+      insertText: 'for (${1:Object} ${2:item} : ${3:collection}) {\n\t${4}\n}',
+      documentation: 'Enhanced for-each loop'
+    },
+    {
+      label: 'while',
+      detail: 'while (condition) { ... }',
+      insertText: 'while (${1:condition}) {\n\t${2}\n}',
+      documentation: 'While loop'
+    },
+    {
+      label: 'dowhile',
+      detail: 'do { ... } while (condition);',
+      insertText: 'do {\n\t${2}\n} while (${1:condition});',
+      documentation: 'Do-while loop'
+    },
+
+    // Exception handling
+    {
       label: 'trycatch',
       detail: 'try { ... } catch (Exception e) { ... }',
       insertText: 'try {\n\t${1}\n} catch (${2:Exception} ${3:e}) {\n\t${3:e}.printStackTrace();\n}',
       documentation: 'Try-catch block'
+    },
+    {
+      label: 'tryf',
+      detail: 'try { ... } catch (...) { ... } finally { ... }',
+      insertText: 'try {\n\t${1}\n} catch (${2:Exception} ${3:e}) {\n\t${3:e}.printStackTrace();\n} finally {\n\t${4}\n}',
+      documentation: 'Try-catch-finally block'
+    },
+    {
+      label: 'thr',
+      detail: 'throw new Exception(...)',
+      insertText: 'throw new ${1:IllegalArgumentException}("${2:message}");',
+      documentation: 'Throw exception'
+    },
+
+    // Common Java Objects & Utilities
+    {
+      label: 'sc',
+      detail: 'Scanner scanner = new Scanner(System.in);',
+      insertText: 'Scanner ${1:scanner} = new Scanner(System.in);',
+      documentation: 'Scanner input initialization'
+    },
+    {
+      label: 'scanner',
+      detail: 'Scanner scanner = new Scanner(System.in);',
+      insertText: 'Scanner ${1:scanner} = new Scanner(System.in);',
+      documentation: 'Scanner input initialization'
+    },
+    {
+      label: 'list',
+      detail: 'List<Type> list = new ArrayList<>();',
+      insertText: 'List<${1:String}> ${2:list} = new ArrayList<>();',
+      documentation: 'ArrayList declaration'
+    },
+    {
+      label: 'map',
+      detail: 'Map<K, V> map = new HashMap<>();',
+      insertText: 'Map<${1:String}, ${2:Object}> ${3:map} = new HashMap<>();',
+      documentation: 'HashMap declaration'
+    },
+
+    // Constants & Modifiers
+    {
+      label: 'psfs',
+      detail: 'public static final String ...',
+      insertText: 'public static final String ${1:NAME} = "${2}";',
+      documentation: 'Public static final String constant'
+    },
+    {
+      label: 'psfi',
+      detail: 'public static final int ...',
+      insertText: 'public static final int ${1:NAME} = ${2:0};',
+      documentation: 'Public static final int constant'
+    },
+    {
+      label: 'prsf',
+      detail: 'private static final ...',
+      insertText: 'private static final ${1:String} ${2:NAME} = ${3};',
+      documentation: 'Private static final constant'
+    },
+
+    // Structure declarations
+    {
+      label: 'class',
+      detail: 'public class Name { ... }',
+      insertText: 'public class ${1:ClassName} {\n\t${2}\n}',
+      documentation: 'Class declaration'
+    },
+    {
+      label: 'interface',
+      detail: 'public interface Name { ... }',
+      insertText: 'public interface ${1:InterfaceName} {\n\t${2}\n}',
+      documentation: 'Interface declaration'
+    },
+    {
+      label: 'enum',
+      detail: 'public enum Name { ... }',
+      insertText: 'public enum ${1:EnumName} {\n\t${2}\n}',
+      documentation: 'Enum declaration'
     }
   ],
 
@@ -61,6 +256,36 @@ export const languageSnippets = {
       detail: 'print(...)',
       insertText: 'print(${1})',
       documentation: 'Print expression or message'
+    },
+    {
+      label: 'if',
+      detail: 'if condition:',
+      insertText: 'if ${1:condition}:\n\t${2:pass}',
+      documentation: 'If statement'
+    },
+    {
+      label: 'ifelse',
+      detail: 'if condition: ... else: ...',
+      insertText: 'if ${1:condition}:\n\t${2:pass}\nelse:\n\t${3:pass}',
+      documentation: 'If-Else statement'
+    },
+    {
+      label: 'ife',
+      detail: 'if condition: ... else: ...',
+      insertText: 'if ${1:condition}:\n\t${2:pass}\nelse:\n\t${3:pass}',
+      documentation: 'If-Else statement (shorthand)'
+    },
+    {
+      label: 'elif',
+      detail: 'elif condition:',
+      insertText: 'elif ${1:condition}:\n\t${2:pass}',
+      documentation: 'Elif clause'
+    },
+    {
+      label: 'while',
+      detail: 'while condition:',
+      insertText: 'while ${1:condition}:\n\t${2:pass}',
+      documentation: 'While loop'
     },
     {
       label: 'ifmain',
@@ -114,6 +339,42 @@ export const languageSnippets = {
       documentation: 'Logs error to the console'
     },
     {
+      label: 'if',
+      detail: 'if (condition) { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n}',
+      documentation: 'If statement'
+    },
+    {
+      label: 'ifelse',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block'
+    },
+    {
+      label: 'ife',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block (shorthand)'
+    },
+    {
+      label: 'elseif',
+      detail: 'else if (condition) { ... }',
+      insertText: 'else if (${1:condition}) {\n\t${2}\n}',
+      documentation: 'Else-If clause'
+    },
+    {
+      label: 'switch',
+      detail: 'switch (key) { case ... }',
+      insertText: 'switch (${1:key}) {\n\tcase ${2:value}:\n\t\t${3}\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n}',
+      documentation: 'Switch statement'
+    },
+    {
+      label: 'while',
+      detail: 'while (condition) { ... }',
+      insertText: 'while (${1:condition}) {\n\t${2}\n}',
+      documentation: 'While loop'
+    },
+    {
       label: 'fn',
       detail: 'function name(params) { ... }',
       insertText: 'function ${1:name}(${2:params}) {\n\t${3}\n}',
@@ -153,6 +414,36 @@ export const languageSnippets = {
       documentation: 'Logs output to the console'
     },
     {
+      label: 'if',
+      detail: 'if (condition) { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n}',
+      documentation: 'If statement'
+    },
+    {
+      label: 'ifelse',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block'
+    },
+    {
+      label: 'ife',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block (shorthand)'
+    },
+    {
+      label: 'switch',
+      detail: 'switch (key) { case ... }',
+      insertText: 'switch (${1:key}) {\n\tcase ${2:value}:\n\t\t${3}\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n}',
+      documentation: 'Switch statement'
+    },
+    {
+      label: 'while',
+      detail: 'while (condition) { ... }',
+      insertText: 'while (${1:condition}) {\n\t${2}\n}',
+      documentation: 'While loop'
+    },
+    {
       label: 'fn',
       detail: 'function name(params): ReturnType',
       insertText: 'function ${1:name}(${2:params}): ${3:void} {\n\t${4}\n}',
@@ -178,6 +469,30 @@ export const languageSnippets = {
       detail: 'print(...)',
       insertText: 'print(${1});',
       documentation: 'Print output in Dart'
+    },
+    {
+      label: 'if',
+      detail: 'if (condition) { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n}',
+      documentation: 'If statement'
+    },
+    {
+      label: 'ifelse',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block'
+    },
+    {
+      label: 'ife',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block (shorthand)'
+    },
+    {
+      label: 'while',
+      detail: 'while (condition) { ... }',
+      insertText: 'while (${1:condition}) {\n\t${2}\n}',
+      documentation: 'While loop'
     },
     {
       label: 'main',
@@ -213,6 +528,30 @@ export const languageSnippets = {
       documentation: 'Standard C++ input'
     },
     {
+      label: 'if',
+      detail: 'if (condition) { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n}',
+      documentation: 'If statement'
+    },
+    {
+      label: 'ifelse',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block'
+    },
+    {
+      label: 'ife',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block (shorthand)'
+    },
+    {
+      label: 'while',
+      detail: 'while (condition) { ... }',
+      insertText: 'while (${1:condition}) {\n\t${2}\n}',
+      documentation: 'While loop'
+    },
+    {
       label: 'main',
       detail: 'int main() { ... }',
       insertText: 'int main() {\n\t${1}\n\treturn 0;\n}',
@@ -240,6 +579,30 @@ export const languageSnippets = {
       documentation: 'Print formatted output'
     },
     {
+      label: 'if',
+      detail: 'if (condition) { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n}',
+      documentation: 'If statement'
+    },
+    {
+      label: 'ifelse',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block'
+    },
+    {
+      label: 'ife',
+      detail: 'if (condition) { ... } else { ... }',
+      insertText: 'if (${1:condition}) {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else block (shorthand)'
+    },
+    {
+      label: 'while',
+      detail: 'while (condition) { ... }',
+      insertText: 'while (${1:condition}) {\n\t${2}\n}',
+      documentation: 'While loop'
+    },
+    {
       label: 'main',
       detail: 'int main() { ... }',
       insertText: 'int main() {\n\t${1}\n\treturn 0;\n}',
@@ -265,6 +628,24 @@ export const languageSnippets = {
       detail: 'fmt.Printf("...", ...)',
       insertText: 'fmt.Printf("${1}\\n", ${2})',
       documentation: 'Formatted print in Go'
+    },
+    {
+      label: 'if',
+      detail: 'if condition { ... }',
+      insertText: 'if ${1:condition} {\n\t${2}\n}',
+      documentation: 'If statement'
+    },
+    {
+      label: 'ifelse',
+      detail: 'if condition { ... } else { ... }',
+      insertText: 'if ${1:condition} {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else statement'
+    },
+    {
+      label: 'ife',
+      detail: 'if condition { ... } else { ... }',
+      insertText: 'if ${1:condition} {\n\t${2}\n} else {\n\t${3}\n}',
+      documentation: 'If-Else statement (shorthand)'
     },
     {
       label: 'main',
