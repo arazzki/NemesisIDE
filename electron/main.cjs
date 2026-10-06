@@ -1,7 +1,8 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, dialog, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const http = require('http');
+const { autoUpdater } = require('electron-updater');
 
 let mainWindow = null;
 let serverProcess = null;
@@ -10,7 +11,68 @@ const PORT = process.env.PORT || 3001;
 const DEV_URL = process.env.ELECTRON_DEV_URL || 'http://localhost:5173';
 const IS_DEV = process.env.NODE_ENV === 'development';
 
-// Check if Express backend is responding
+// -------------------------------------------------------------
+// Auto-Updater Configuration (GitHub Releases)
+// -------------------------------------------------------------
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+
+function setupAutoUpdater() {
+  if (IS_DEV || !app.isPackaged) {
+    console.log('[AutoUpdater] Skipped in development mode.');
+    return;
+  }
+
+  autoUpdater.on('checking-for-update', () => {
+    console.log('[AutoUpdater] Checking for updates on GitHub...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('[AutoUpdater] New update found:', info.version);
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('[AutoUpdater] Application is on latest version.');
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.warn('[AutoUpdater] Update check failed or skipped:', err.message);
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    console.log(`[AutoUpdater] Download: ${Math.round(progressObj.percent)}% (${Math.round(progressObj.bytesPerSecond / 1024)} KB/s)`);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[AutoUpdater] Update downloaded:', info.version);
+    if (mainWindow) {
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        buttons: ['Restart & Terapkan', 'Nanti Saja'],
+        defaultId: 0,
+        cancelId: 1,
+        title: 'Pembaruan Siap Dipasang ⚡',
+        message: `Versi baru Nemesis IDE (v${info.version}) berhasil diunduh!`,
+        detail: 'Apakah Anda ingin me-restart Nemesis IDE sekarang untuk memasang pembaruan otomatis?'
+      }).then((result) => {
+        if (result.response === 0) {
+          autoUpdater.quitAndInstall();
+        }
+      });
+    }
+  });
+
+  // Check for updates 3 seconds after application boots
+  setTimeout(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      console.warn('[AutoUpdater] Background check error:', err.message);
+    });
+  }, 3000);
+}
+
+// -------------------------------------------------------------
+// Backend Express Server Management
+// -------------------------------------------------------------
 function checkServerReady(port, callback) {
   const req = http.get(`http://localhost:${port}/api/tree`, (res) => {
     callback(true);
@@ -24,7 +86,6 @@ function checkServerReady(port, callback) {
   });
 }
 
-// Start backend Express server if not already running
 function startBackendServer(callback) {
   checkServerReady(PORT, (isReady) => {
     if (isReady) {
@@ -64,6 +125,9 @@ function startBackendServer(callback) {
   });
 }
 
+// -------------------------------------------------------------
+// Main Window Lifecycle
+// -------------------------------------------------------------
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1366,
@@ -83,16 +147,16 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    setupAutoUpdater();
   });
 
-  // Load URL
   if (IS_DEV) {
     mainWindow.loadURL(DEV_URL);
   } else {
     mainWindow.loadURL(`http://localhost:${PORT}`);
   }
 
-  // Open external links in default system browser
+  // External links opened in system browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http:') || url.startsWith('https:')) {
       shell.openExternal(url);

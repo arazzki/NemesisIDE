@@ -70,6 +70,9 @@ graph TD
   - One-click **Run Code** button for Python & JavaScript scripts.
   - Real-time streaming output without blocking the UI.
   - Interactive terminal prompt for running shell commands.
+- 🖥️ **Standalone Desktop App & Auto-Updater**:
+  - Native Windows desktop application via Electron.
+  - Seamless background auto-updates powered by `electron-updater` & GitHub Releases.
 - 🎯 **Status Bar & Metadata**:
   - Live cursor position (`Ln`, `Col`).
   - Active language and encoding indicator.
