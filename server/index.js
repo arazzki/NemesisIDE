@@ -310,7 +310,30 @@ if (fs.existsSync(DIST_DIR)) {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Nemesis IDE Backend berjalan di http://localhost:${PORT}`);
-  console.log(`Workspace folder: ${WORKSPACE_DIR}`);
-});
+// Export app and server starter function
+export { app };
+
+export function startServer(port = PORT) {
+  return new Promise((resolve) => {
+    const server = app.listen(port, () => {
+      console.log(`[Backend] Nemesis IDE berjalan di http://localhost:${port}`);
+      console.log(`[Backend] Workspace folder: ${WORKSPACE_DIR}`);
+      resolve(server);
+    });
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`[Backend] Port ${port} sudah aktif.`);
+        resolve(null);
+      } else {
+        console.error('[Backend] Gagal memulai server:', err);
+        resolve(null);
+      }
+    });
+  });
+}
+
+// Auto-run jika dieksekusi langsung via node server/index.js (bukan di-import oleh Electron)
+if (!process.versions.electron) {
+  startServer(PORT);
+}
