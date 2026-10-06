@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
+import { getTemplateForFile } from './templates.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -159,7 +160,9 @@ app.post('/api/create', (req, res) => {
       fs.mkdirSync(targetPath, { recursive: true });
     } else {
       fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-      fs.writeFileSync(targetPath, '', 'utf8');
+      const fileName = path.basename(targetPath);
+      const templateContent = getTemplateForFile(fileName);
+      fs.writeFileSync(targetPath, templateContent, 'utf8');
     }
 
     res.json({ success: true, message: `${type} created successfully` });
