@@ -229,10 +229,13 @@ export default function EditorArea({
         ) : (
           /* Empty / Welcome State */
           <div className="h-full flex flex-col items-center justify-center text-zinc-400 select-none p-6">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden border border-blue-500/50 mb-6 shadow-2xl shadow-blue-500/20 bg-zinc-900 flex items-center justify-center">
-              <img src="/logo.png" alt="Nemesis IDE" className="w-full h-full object-cover" />
+            <div className="flex flex-col items-center mb-4">
+              <img 
+                src="/banner.png" 
+                alt="Nemesis IDE" 
+                className="w-72 h-auto object-contain rounded-xl drop-shadow-[0_10px_25px_rgba(168,85,247,0.25)]" 
+              />
             </div>
-            <h2 className="text-xl font-bold text-zinc-100 mb-2">Nemesis IDE</h2>
             <p className="text-xs text-zinc-400 mb-6 text-center max-w-sm">
               Custom IDE dengan pewarnaan sintaks kaya warna untuk Python, Java, JavaScript, Dart, C++, C#, Go, Rust, dan lainnya.
             </p>

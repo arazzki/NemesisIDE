@@ -183,7 +183,7 @@ export default function Sidebar({
       <div className="w-64 bg-[#18181b] border-r border-[#27272a] p-4 flex flex-col justify-between select-none">
         <div>
           <div className="flex items-center space-x-2.5 mb-4 p-2.5 rounded-lg bg-[#202024] border border-[#2e2e33]">
-            <img src="/logo.png" alt="Nemesis Logo" className="w-9 h-9 rounded-md object-cover border border-blue-500/40" />
+            <img src="/emblem.png" alt="Nemesis Logo" className="w-9 h-9 rounded-md object-cover border border-purple-500/40 bg-[#040b1b]" />
             <div>
               <h2 className="text-sm font-bold text-white leading-tight">Nemesis IDE</h2>
               <span className="text-[10px] text-blue-400 font-mono">v0.1.0 Desktop</span>
