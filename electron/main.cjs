@@ -129,6 +129,7 @@ function startBackendServer(callback) {
 // Main Window Lifecycle
 // -------------------------------------------------------------
 function createWindow() {
+  const iconPath = path.join(__dirname, 'icon.png');
   mainWindow = new BrowserWindow({
     width: 1366,
     height: 850,
@@ -136,6 +137,7 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: '#18181b',
     title: 'Nemesis IDE',
+    icon: iconPath,
     autoHideMenuBar: true,
     show: false,
     webPreferences: {

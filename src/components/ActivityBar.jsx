@@ -5,8 +5,8 @@ export default function ActivityBar({ activeView, setActiveView, isTerminalOpen,
   return (
     <aside className="w-12 bg-[#141416] border-r border-[#27272a] flex flex-col items-center py-3 select-none z-20">
       {/* Brand Icon */}
-      <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white mb-6 shadow-md shadow-blue-500/20">
-        <Code2 size={20} />
+      <div className="w-8 h-8 rounded-lg overflow-hidden border border-blue-500/40 mb-6 shadow-md shadow-blue-500/20 bg-zinc-900 flex items-center justify-center">
+        <img src="/logo.png" alt="Nemesis IDE" className="w-full h-full object-cover" />
       </div>
 
       {/* Top Nav Items */}

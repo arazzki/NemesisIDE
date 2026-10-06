@@ -229,8 +229,8 @@ export default function EditorArea({
         ) : (
           /* Empty / Welcome State */
           <div className="h-full flex flex-col items-center justify-center text-zinc-400 select-none p-6">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white mb-6 shadow-xl shadow-blue-500/20">
-              <Code size={36} />
+            <div className="w-20 h-20 rounded-2xl overflow-hidden border border-blue-500/50 mb-6 shadow-2xl shadow-blue-500/20 bg-zinc-900 flex items-center justify-center">
+              <img src="/logo.png" alt="Nemesis IDE" className="w-full h-full object-cover" />
             </div>
             <h2 className="text-xl font-bold text-zinc-100 mb-2">Nemesis IDE</h2>
             <p className="text-xs text-zinc-400 mb-6 text-center max-w-sm">
