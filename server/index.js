@@ -15,53 +15,10 @@ const PORT = 3001;
 // Define workspace path
 const WORKSPACE_DIR = path.resolve(__dirname, '..', 'workspace');
 
-// Ensure workspace directory exists and seed initial demo files
+// Ensure workspace directory exists
 if (!fs.existsSync(WORKSPACE_DIR)) {
   fs.mkdirSync(WORKSPACE_DIR, { recursive: true });
 }
-
-// Function to seed demo files for multiple languages if not present
-function seedDemoFiles() {
-  const files = [
-    {
-      name: 'main.py',
-      content: `# Python Demo di Nemesis IDE\n\ndef sapa(nama: str) -> str:\n    return f"Halo {nama}, selamat datang di Nemesis IDE!"\n\ndef hitung_fibonacci(n: int) -> list[int]:\n    deret = [0, 1]\n    for _ in range(2, n):\n        deret.append(deret[-1] + deret[-2])\n    return deret\n\nif __name__ == "__main__":\n    print(sapa("Developer"))\n    print("\\nDeret Fibonacci 10 angka pertama:")\n    print(hitung_fibonacci(10))\n`
-    },
-    {
-      name: 'index.js',
-      content: `// JavaScript Demo di Nemesis IDE\nconsole.log("🚀 Menjalankan script JavaScript di Nemesis IDE...\\n");\n\nconst modules = [\n  { id: 1, name: "Monaco Editor Engine", status: "Active" },\n  { id: 2, name: "Multi-Language Runner", status: "Enabled" },\n  { id: 3, name: "Vivid Syntax Themes", status: "Ready" }\n];\n\nconsole.table(modules);\nconsole.log("\\nWaktu eksekusi:", new Date().toLocaleTimeString());\n`
-    },
-    {
-      name: 'App.java',
-      content: `// Java 21 Demo di Nemesis IDE\npublic class App {\n    public static void main(String[] args) {\n        System.out.println("☕ Halo dari Java di Nemesis IDE!");\n        System.out.println("Java Version: " + System.getProperty("java.version"));\n        \n        int sum = 0;\n        for (int i = 1; i <= 5; i++) {\n            sum += i;\n            System.out.println("Step " + i + ": sum = " + sum);\n        }\n        \n        System.out.println("Total penjumlahan: " + sum);\n    }\n}\n`
-    },
-    {
-      name: 'main.dart',
-      content: `// Dart Demo di Nemesis IDE\nvoid main() {\n  print('🎯 Halo dari Dart di Nemesis IDE!');\n  \n  final languages = ['Python', 'JavaScript', 'Java', 'Dart', 'TypeScript'];\n  print('Bahasa yang didukung:');\n  for (final lang in languages) {\n    print('  - ' + lang);\n  }\n  \n  final now = DateTime.now();\n  print('\\nTimestamp: \${now.toIso8601String()}');\n}\n`
-    },
-    {
-      name: 'script.ps1',
-      content: `# PowerShell Script Demo di Nemesis IDE\nWrite-Host "⚡ Menjalankan PowerShell di Nemesis IDE!" -ForegroundColor Cyan\n$info = Get-Date\nWrite-Host "Waktu saat ini: $info" -ForegroundColor Green\nWrite-Host "OS: $((Get-CimInstance Win32_OperatingSystem).Caption)" -ForegroundColor Yellow\n`
-    },
-    {
-      name: 'hello.bat',
-      content: `@echo off\necho ======================================\necho   Halo dari Windows Batch Script!\necho   Nemesis IDE Multi-Language Runner\necho ======================================\necho Selesai.\n`
-    },
-    {
-      name: 'README.md',
-      content: `# ⚡ Selamat Datang di Nemesis IDE!\n\nNemesis IDE kini mendukung pewarnaan sintaks kaya warna dan runner multi-bahasa!\n\n### Coba buka dan jalankan file berikut:\n- **\`main.py\`**: Python script\n- **\`index.js\`**: JavaScript script\n- **\`App.java\`**: Java program\n- **\`main.dart\`**: Dart program\n- **\`script.ps1\`**: PowerShell script\n- **\`hello.bat\`**: Windows Batch file\n\nKlik tombol hijau **Run Code** di pojok kanan atas untuk menjalankannya langsung di panel Terminal!`
-    }
-  ];
-
-  for (const f of files) {
-    const full = path.join(WORKSPACE_DIR, f.name);
-    if (!fs.existsSync(full)) {
-      fs.writeFileSync(full, f.content, 'utf8');
-    }
-  }
-}
-
-seedDemoFiles();
 
 app.use(cors());
 app.use(express.json());
