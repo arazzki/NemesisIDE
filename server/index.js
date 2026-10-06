@@ -191,10 +191,14 @@ app.get('/api/run', (req, res) => {
 
   let command = '';
   let args = [];
+  let runCwd = WORKSPACE_DIR;
+  let useShell = false;
 
   if (customCmd) {
     command = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
     args = process.platform === 'win32' ? ['/c', customCmd] : ['-c', customCmd];
+    runCwd = WORKSPACE_DIR;
+    useShell = false;
     sendEvent('stdout', `> ${customCmd}\n`);
   } else if (filePathParam) {
     const fullPath = getSafePath(filePathParam);
@@ -202,59 +206,60 @@ app.get('/api/run', (req, res) => {
     const fileName = path.basename(fullPath);
     const fileNameWithoutExt = path.parse(fileName).name;
     const fileDir = path.dirname(fullPath);
+    runCwd = fileDir;
 
     sendEvent('stdout', `> [Nemesis Runner] Menjalankan ${fileName}...\n----------------------------------------\n`);
 
     if (ext === '.py') {
       command = 'python';
-      args = [fullPath];
+      args = [fileName];
     } else if (ext === '.js' || ext === '.mjs') {
       command = 'node';
-      args = [fullPath];
+      args = [fileName];
     } else if (ext === '.ts') {
       // Node 22+ supports strip types natively
       command = 'node';
-      args = ['--experimental-strip-types', fullPath];
+      args = ['--experimental-strip-types', fileName];
     } else if (ext === '.java') {
       // In Java 11+, single-file source code programs can be run directly with `java <file.java>`!
       command = 'java';
-      args = [fullPath];
+      args = [fileName];
     } else if (ext === '.dart') {
       command = 'dart';
-      args = ['run', fullPath];
+      args = ['run', fileName];
     } else if (ext === '.ps1') {
       command = 'powershell.exe';
-      args = ['-ExecutionPolicy', 'Bypass', '-File', fullPath];
+      args = ['-ExecutionPolicy', 'Bypass', '-File', fileName];
     } else if (ext === '.bat' || ext === '.cmd') {
       command = 'cmd.exe';
-      args = ['/c', fullPath];
+      args = ['/c', fileName];
     } else if (ext === '.sh') {
       const gitBash = 'E:\\Git\\bin\\bash.exe';
       if (fs.existsSync(gitBash)) {
         command = gitBash;
-        args = [fullPath];
+        args = [fileName];
       } else {
         command = 'bash';
-        args = [fullPath];
+        args = [fileName];
       }
     } else if (ext === '.c') {
       command = 'cmd.exe';
-      const outExe = path.join(fileDir, `${fileNameWithoutExt}.exe`);
-      args = ['/c', `gcc "${fullPath}" -o "${outExe}" && "${outExe}"`];
+      const outExe = `${fileNameWithoutExt}.exe`;
+      args = ['/c', `gcc "${fileName}" -o "${outExe}" && "${outExe}"`];
     } else if (ext === '.cpp' || ext === '.cc') {
       command = 'cmd.exe';
-      const outExe = path.join(fileDir, `${fileNameWithoutExt}.exe`);
-      args = ['/c', `g++ "${fullPath}" -o "${outExe}" && "${outExe}"`];
+      const outExe = `${fileNameWithoutExt}.exe`;
+      args = ['/c', `g++ "${fileName}" -o "${outExe}" && "${outExe}"`];
     } else if (ext === '.go') {
       command = 'go';
-      args = ['run', fullPath];
+      args = ['run', fileName];
     } else if (ext === '.rs') {
       command = 'cmd.exe';
-      const outExe = path.join(fileDir, `${fileNameWithoutExt}.exe`);
-      args = ['/c', `rustc "${fullPath}" -o "${outExe}" && "${outExe}"`];
+      const outExe = `${fileNameWithoutExt}.exe`;
+      args = ['/c', `rustc "${fileName}" -o "${outExe}" && "${outExe}"`];
     } else if (ext === '.php') {
       command = 'php';
-      args = [fullPath];
+      args = [fileName];
     } else {
       sendEvent('stderr', `Ekstensi "${ext}" belum memiliki konfigurasi runner otomatis.\nAnda dapat menjalankan perintah kustom lewat input terminal di bawah.\n`);
       sendEvent('exit', { code: 1 });
@@ -269,8 +274,8 @@ app.get('/api/run', (req, res) => {
   }
 
   const child = spawn(command, args, {
-    cwd: WORKSPACE_DIR,
-    shell: true,
+    cwd: runCwd,
+    shell: useShell,
   });
 
   child.stdout.on('data', (chunk) => {
