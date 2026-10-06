@@ -19,7 +19,7 @@ export default function App() {
   
   const [cursorPosition, setCursorPosition] = useState({ line: 1, col: 1 });
   const [editorSettings, setEditorSettings] = useState({
-    theme: 'vs-dark',
+    theme: 'nemesis-dark',
     fontSize: 14,
     tabSize: 2,
     wordWrap: 'on',

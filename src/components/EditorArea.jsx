@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { X, Play, Save, Code, FileQuestion } from 'lucide-react';
-import { getLanguageFromPath, getFileBadgeColor } from '../utils/languageHelper';
+import { X, Play, Save, Code } from 'lucide-react';
+import { getLanguageFromPath, getFileBadgeColor, getLanguageName } from '../utils/languageHelper';
 
 export default function EditorArea({
   tabs,
@@ -17,6 +17,76 @@ export default function EditorArea({
 }) {
   const activeTab = tabs.find((t) => t.path === activeTabPath);
   const editorRef = useRef(null);
+
+  // Setup vibrant custom themes before Monaco mounts
+  const handleEditorWillMount = (monaco) => {
+    // Theme 1: Nemesis Dark (One Dark Pro inspired)
+    monaco.editor.defineTheme('nemesis-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'keyword', foreground: 'c678dd', fontStyle: 'bold' },
+        { token: 'keyword.control', foreground: 'c678dd', fontStyle: 'bold' },
+        { token: 'type', foreground: 'e5c07b', fontStyle: 'bold' },
+        { token: 'type.identifier', foreground: 'e5c07b' },
+        { token: 'class', foreground: 'e5c07b', fontStyle: 'bold' },
+        { token: 'identifier', foreground: 'abb2bf' },
+        { token: 'function', foreground: '61afef', fontStyle: 'bold' },
+        { token: 'method', foreground: '61afef' },
+        { token: 'string', foreground: '98c379' },
+        { token: 'string.escape', foreground: '56b6c2' },
+        { token: 'number', foreground: 'd19a66' },
+        { token: 'comment', foreground: '5c6370', fontStyle: 'italic' },
+        { token: 'delimiter', foreground: '56b6c2' },
+        { token: 'operator', foreground: '56b6c2' },
+        { token: 'tag', foreground: 'e06c75' },
+        { token: 'attribute.name', foreground: 'd19a66' },
+        { token: 'attribute.value', foreground: '98c379' },
+        { token: 'variable', foreground: 'e06c75' },
+        { token: 'variable.parameter', foreground: 'd19a66' },
+        { token: 'constant', foreground: 'd19a66', fontStyle: 'bold' },
+      ],
+      colors: {
+        'editor.background': '#1a1a1f',
+        'editor.foreground': '#abb2bf',
+        'editorCursor.foreground': '#528bff',
+        'editor.lineHighlightBackground': '#24242d',
+        'editorLineNumber.foreground': '#4b5263',
+        'editorLineNumber.activeForeground': '#abb2bf',
+        'editor.selectionBackground': '#3e4451',
+        'editor.inactiveSelectionBackground': '#2c313a',
+        'editorIndentGuide.background': '#2d3139',
+        'editorIndentGuide.activeBackground': '#4e5666',
+        'editorBracketMatch.background': '#515a6b',
+        'editorBracketMatch.border': '#515a6b',
+      }
+    });
+
+    // Theme 2: Tokyo Night (Neon Cyberpunk)
+    monaco.editor.defineTheme('tokyo-night', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'keyword', foreground: 'bb9af7', fontStyle: 'bold' },
+        { token: 'type', foreground: '2ac3de', fontStyle: 'bold' },
+        { token: 'function', foreground: '7aa2f7', fontStyle: 'bold' },
+        { token: 'string', foreground: '9ece6a' },
+        { token: 'number', foreground: 'ff9e64' },
+        { token: 'comment', foreground: '565f89', fontStyle: 'italic' },
+        { token: 'delimiter', foreground: '89ddff' },
+        { token: 'operator', foreground: '89ddff' },
+        { token: 'variable', foreground: 'f7768e' },
+      ],
+      colors: {
+        'editor.background': '#16161e',
+        'editor.foreground': '#a9b1d6',
+        'editor.lineHighlightBackground': '#1f2335',
+        'editorLineNumber.foreground': '#3b4261',
+        'editorLineNumber.activeForeground': '#7aa2f7',
+        'editor.selectionBackground': '#283457',
+      }
+    });
+  };
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -42,7 +112,8 @@ export default function EditorArea({
         <div className="flex items-center h-full overflow-x-auto no-scrollbar flex-1">
           {tabs.map((tab) => {
             const isActive = tab.path === activeTabPath;
-            const badgeColor = getFileBadgeColor(tab.path);
+            const badgeClasses = getFileBadgeColor(tab.path).split(' ');
+            const dotBg = badgeClasses[1] || 'bg-blue-400';
 
             return (
               <div
@@ -50,11 +121,11 @@ export default function EditorArea({
                 onClick={() => onSelectTab(tab.path)}
                 className={`group flex items-center h-full px-3 text-xs border-r border-[#27272a] cursor-pointer transition-colors max-w-xs ${
                   isActive
-                    ? 'bg-[#1e1e24] text-white border-t-2 border-t-blue-500 font-medium'
+                    ? 'bg-[#1a1a1f] text-white border-t-2 border-t-blue-500 font-medium'
                     : 'bg-[#141416] text-zinc-400 hover:bg-[#1b1b1e] hover:text-zinc-200'
                 }`}
               >
-                <span className={`w-2 h-2 rounded-full mr-2 ${badgeColor.replace('text-', 'bg-')}`} />
+                <span className={`w-2 h-2 rounded-full mr-2 ${dotBg}`} />
                 <span className="truncate mr-2">{tab.name}</span>
 
                 {/* Dirty indicator or close button */}
@@ -82,6 +153,10 @@ export default function EditorArea({
         {/* Action Buttons (Save & Run) */}
         {activeTab && (
           <div className="flex items-center space-x-2 px-3 border-l border-[#27272a] bg-[#141416] h-full">
+            <span className="text-[11px] text-zinc-400 font-mono hidden md:inline mr-1">
+              {getLanguageName(activeTab.path)}
+            </span>
+
             <button
               onClick={() => onSaveFile()}
               disabled={!activeTab.isDirty}
@@ -99,7 +174,7 @@ export default function EditorArea({
             <button
               onClick={onRunCode}
               disabled={isRunning}
-              title="Jalankan Kode (Run)"
+              title={`Jalankan ${getLanguageName(activeTab.path)} (Run)`}
               className={`flex items-center space-x-1.5 px-3 py-1 rounded text-xs font-semibold shadow-sm transition-all ${
                 isRunning
                   ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
@@ -123,6 +198,7 @@ export default function EditorArea({
             language={getLanguageFromPath(activeTab.path)}
             value={activeTab.content}
             theme={editorSettings.theme}
+            beforeMount={handleEditorWillMount}
             onChange={(newVal) => onContentChange(activeTab.path, newVal ?? '')}
             onMount={handleEditorDidMount}
             options={{
@@ -149,7 +225,7 @@ export default function EditorArea({
             </div>
             <h2 className="text-xl font-bold text-zinc-100 mb-2">Nemesis IDE</h2>
             <p className="text-xs text-zinc-400 mb-6 text-center max-w-sm">
-              Custom IDE berbasis Monaco Editor dan Node.js Backend. Pilih file dari sidebar untuk mulai mengedit kode.
+              Custom IDE dengan pewarnaan sintaks kaya warna untuk Python, Java, JavaScript, Dart, C++, C#, Go, Rust, dan lainnya.
             </p>
 
             <div className="bg-[#18181b] border border-[#27272a] rounded-lg p-4 w-72 text-xs space-y-2.5">

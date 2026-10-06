@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { 
   Folder, FolderOpen, FileCode, FileText, Trash2, 
   FilePlus, FolderPlus, RefreshCw, ChevronRight, ChevronDown,
-  Edit2, Check, X, ShieldAlert
+  Edit2, Check, X, Terminal, Coffee, Sparkles, Layers
 } from 'lucide-react';
-import { getFileBadgeColor, getLanguageFromPath } from '../utils/languageHelper';
+import { getFileBadgeColor, getLanguageFromPath, getLanguageName } from '../utils/languageHelper';
 
 function FileTreeItem({ 
   item, 
@@ -34,10 +34,16 @@ function FileTreeItem({
   };
 
   const getFileIcon = (filePath) => {
-    const lang = getLanguageFromPath(filePath);
-    const colorClass = getFileBadgeColor(filePath);
-    if (lang === 'markdown') return <FileText size={15} className={colorClass} />;
-    return <FileCode size={15} className={colorClass} />;
+    const ext = filePath.split('.').pop().toLowerCase();
+    const badgeColor = getFileBadgeColor(filePath).split(' ')[0] || 'text-zinc-400';
+
+    if (ext === 'java') return <Coffee size={15} className="text-orange-500" />;
+    if (ext === 'dart') return <Sparkles size={15} className="text-cyan-400" />;
+    if (ext === 'sh' || ext === 'ps1' || ext === 'bat' || ext === 'cmd') {
+      return <Terminal size={15} className="text-lime-400" />;
+    }
+    if (ext === 'md' || ext === 'txt') return <FileText size={15} className="text-teal-300" />;
+    return <FileCode size={15} className={badgeColor} />;
   };
 
   return (
@@ -161,7 +167,7 @@ export default function Sidebar({
   editorSettings,
   setEditorSettings
 }) {
-  const [newPrompt, setNewPrompt] = useState(null); // { type: 'file' | 'folder', path: '' }
+  const [newPrompt, setNewPrompt] = useState(null);
   const [itemNameInput, setItemNameInput] = useState('');
 
   const handleCreateSubmit = (e) => {
@@ -180,20 +186,20 @@ export default function Sidebar({
             Tentang Nemesis IDE
           </h2>
           <div className="bg-[#202024] p-3 rounded-lg border border-[#2e2e33] text-xs text-zinc-300 space-y-2 mb-4">
-            <p className="font-semibold text-blue-400">Arsitektur IDE Anda:</p>
+            <p className="font-semibold text-blue-400">Arsitektur Nemesis IDE:</p>
             <ul className="list-disc list-inside space-y-1 text-zinc-400">
-              <li><strong className="text-zinc-200">Editor:</strong> Monaco Editor (VS Code Engine)</li>
+              <li><strong className="text-zinc-200">Editor:</strong> Monaco Engine (Multi-Language Highlight)</li>
               <li><strong className="text-zinc-200">Frontend:</strong> React + Vite + Tailwind CSS</li>
               <li><strong className="text-zinc-200">Backend:</strong> Node.js Express (File System & Process Runner)</li>
-              <li><strong className="text-zinc-200">Execution:</strong> Live stream stdout/stderr SSE</li>
+              <li><strong className="text-zinc-200">Runtime:</strong> Python, Node.js, Java, Dart, Bash, PowerShell</li>
             </ul>
           </div>
           <div className="text-xs text-zinc-400 leading-relaxed">
-            Anda dapat memperluas IDE ini dengan menambahkan dukungan plugin, Language Server Protocol (LSP), atau membungkusnya ke dalam <span className="text-blue-400 font-mono">Electron</span> untuk aplikasi desktop asli!
+            Dukung 80+ bahasa pemrograman dengan live streaming runner di panel terminal!
           </div>
         </div>
         <div className="text-[11px] text-zinc-500 border-t border-[#27272a] pt-3">
-          Status: Development Ready ⚡
+          Status: Production Ready ⚡
         </div>
       </div>
     );
@@ -208,13 +214,15 @@ export default function Sidebar({
 
         <div className="space-y-4 text-xs">
           <div>
-            <label className="text-zinc-400 block mb-1.5 font-medium">Tema Monaco</label>
+            <label className="text-zinc-400 block mb-1.5 font-medium">Tema Warna Sintaks</label>
             <select
               value={editorSettings.theme}
               onChange={(e) => setEditorSettings({ ...editorSettings, theme: e.target.value })}
               className="w-full bg-[#202024] border border-[#2e2e33] rounded px-2.5 py-1.5 text-zinc-200 outline-none focus:border-blue-500"
             >
-              <option value="vs-dark">Dark (VS Dark)</option>
+              <option value="nemesis-dark">Nemesis Dark (Vivid Colors)</option>
+              <option value="tokyo-night">Tokyo Night (Cyber Neon)</option>
+              <option value="vs-dark">Dark (VS Code Default)</option>
               <option value="light">Light</option>
               <option value="hc-black">High Contrast</option>
             </select>
@@ -329,7 +337,7 @@ export default function Sidebar({
             <input
               type="text"
               autoFocus
-              placeholder={newPrompt.type === 'directory' ? 'src' : 'script.py'}
+              placeholder={newPrompt.type === 'directory' ? 'src' : 'App.java'}
               value={itemNameInput}
               onChange={(e) => setItemNameInput(e.target.value)}
               className="flex-1 bg-[#18181b] border border-blue-500/70 rounded px-2 py-1 text-xs text-white outline-none"

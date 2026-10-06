@@ -14,28 +14,53 @@ const PORT = 3001;
 // Define workspace path
 const WORKSPACE_DIR = path.resolve(__dirname, '..', 'workspace');
 
-// Ensure workspace directory exists and seed initial demo files if empty
+// Ensure workspace directory exists and seed initial demo files
 if (!fs.existsSync(WORKSPACE_DIR)) {
   fs.mkdirSync(WORKSPACE_DIR, { recursive: true });
 }
 
-// Seed initial files if workspace is empty
-if (fs.readdirSync(WORKSPACE_DIR).length === 0) {
-  fs.writeFileSync(
-    path.join(WORKSPACE_DIR, 'main.py'),
-    `# Selamat datang di IDE buatan Anda sendiri!\n\ndef sapa(nama):\n    return f"Halo {nama}, selamat mencoba IDE kustom ini!"\n\ndef hitung_fibonacci(n):\n    deret = [0, 1]\n    for i in range(2, n):\n        deret.append(deret[-1] + deret[-2])\n    return deret\n\nif __name__ == "__main__":\n    print(sapa("Developer"))\n    print("\\nDeret Fibonacci 10 angka pertama:")\n    print(hitung_fibonacci(10))\n`
-  );
+// Function to seed demo files for multiple languages if not present
+function seedDemoFiles() {
+  const files = [
+    {
+      name: 'main.py',
+      content: `# Python Demo di Nemesis IDE\n\ndef sapa(nama: str) -> str:\n    return f"Halo {nama}, selamat datang di Nemesis IDE!"\n\ndef hitung_fibonacci(n: int) -> list[int]:\n    deret = [0, 1]\n    for _ in range(2, n):\n        deret.append(deret[-1] + deret[-2])\n    return deret\n\nif __name__ == "__main__":\n    print(sapa("Developer"))\n    print("\\nDeret Fibonacci 10 angka pertama:")\n    print(hitung_fibonacci(10))\n`
+    },
+    {
+      name: 'index.js',
+      content: `// JavaScript Demo di Nemesis IDE\nconsole.log("🚀 Menjalankan script JavaScript di Nemesis IDE...\\n");\n\nconst modules = [\n  { id: 1, name: "Monaco Editor Engine", status: "Active" },\n  { id: 2, name: "Multi-Language Runner", status: "Enabled" },\n  { id: 3, name: "Vivid Syntax Themes", status: "Ready" }\n];\n\nconsole.table(modules);\nconsole.log("\\nWaktu eksekusi:", new Date().toLocaleTimeString());\n`
+    },
+    {
+      name: 'App.java',
+      content: `// Java 21 Demo di Nemesis IDE\npublic class App {\n    public static void main(String[] args) {\n        System.out.println("☕ Halo dari Java di Nemesis IDE!");\n        System.out.println("Java Version: " + System.getProperty("java.version"));\n        \n        int sum = 0;\n        for (int i = 1; i <= 5; i++) {\n            sum += i;\n            System.out.println("Step " + i + ": sum = " + sum);\n        }\n        \n        System.out.println("Total penjumlahan: " + sum);\n    }\n}\n`
+    },
+    {
+      name: 'main.dart',
+      content: `// Dart Demo di Nemesis IDE\nvoid main() {\n  print('🎯 Halo dari Dart di Nemesis IDE!');\n  \n  final languages = ['Python', 'JavaScript', 'Java', 'Dart', 'TypeScript'];\n  print('Bahasa yang didukung:');\n  for (final lang in languages) {\n    print('  - ' + lang);\n  }\n  \n  final now = DateTime.now();\n  print('\\nTimestamp: \${now.toIso8601String()}');\n}\n`
+    },
+    {
+      name: 'script.ps1',
+      content: `# PowerShell Script Demo di Nemesis IDE\nWrite-Host "⚡ Menjalankan PowerShell di Nemesis IDE!" -ForegroundColor Cyan\n$info = Get-Date\nWrite-Host "Waktu saat ini: $info" -ForegroundColor Green\nWrite-Host "OS: $((Get-CimInstance Win32_OperatingSystem).Caption)" -ForegroundColor Yellow\n`
+    },
+    {
+      name: 'hello.bat',
+      content: `@echo off\necho ======================================\necho   Halo dari Windows Batch Script!\necho   Nemesis IDE Multi-Language Runner\necho ======================================\necho Selesai.\n`
+    },
+    {
+      name: 'README.md',
+      content: `# ⚡ Selamat Datang di Nemesis IDE!\n\nNemesis IDE kini mendukung pewarnaan sintaks kaya warna dan runner multi-bahasa!\n\n### Coba buka dan jalankan file berikut:\n- **\`main.py\`**: Python script\n- **\`index.js\`**: JavaScript script\n- **\`App.java\`**: Java program\n- **\`main.dart\`**: Dart program\n- **\`script.ps1\`**: PowerShell script\n- **\`hello.bat\`**: Windows Batch file\n\nKlik tombol hijau **Run Code** di pojok kanan atas untuk menjalankannya langsung di panel Terminal!`
+    }
+  ];
 
-  fs.writeFileSync(
-    path.join(WORKSPACE_DIR, 'index.js'),
-    `// JavaScript Runner Test\nconsole.log("🚀 Menjalankan JavaScript di Custom IDE...");\n\nconst items = [\n  { id: 1, name: "Editor Engine (Monaco)", status: "Active" },\n  { id: 2, name: "File System API", status: "Connected" },\n  { id: 3, name: "Integrated Runner", status: "Ready" }\n];\n\nconsole.table(items);\nconsole.log("Waktu sekarang:", new Date().toLocaleTimeString());\n`
-  );
-
-  fs.writeFileSync(
-    path.join(WORKSPACE_DIR, 'README.md'),
-    `# 🚀 Selamat Datang di Custom IDE Anda!\n\nIni adalah workspace lokal Anda. Anda dapat:\n- Membuat file & folder baru lewat Sidebar\n- Mengedit kode dengan auto-complete (Monaco Editor)\n- Simpan file dengan \`Ctrl + S\`\n- Klik tombol **Run Code** (Segitiga Hijau) di atas atau di terminal untuk menjalankan script ini secara live!\n\nCoba buka file \`main.py\` atau \`index.js\` lalu klik tombol **Run**!`
-  );
+  for (const f of files) {
+    const full = path.join(WORKSPACE_DIR, f.name);
+    if (!fs.existsSync(full)) {
+      fs.writeFileSync(full, f.content, 'utf8');
+    }
+  }
 }
+
+seedDemoFiles();
 
 app.use(cors());
 app.use(express.json());
@@ -54,7 +79,6 @@ function getSafePath(relativePath) {
 function getFileTree(dir, relativeTo = WORKSPACE_DIR) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   
-  // Sort directories first, then files
   const sortedEntries = entries.sort((a, b) => {
     if (a.isDirectory() && !b.isDirectory()) return -1;
     if (!a.isDirectory() && b.isDirectory()) return 1;
@@ -62,7 +86,7 @@ function getFileTree(dir, relativeTo = WORKSPACE_DIR) {
   });
 
   return sortedEntries
-    .filter(entry => !entry.name.startsWith('.') && entry.name !== 'node_modules')
+    .filter(entry => !entry.name.startsWith('.') && entry.name !== 'node_modules' && !entry.name.endsWith('.class'))
     .map(entry => {
       const fullPath = path.join(dir, entry.name);
       const relPath = path.relative(relativeTo, fullPath).replace(/\\/g, '/');
@@ -112,7 +136,6 @@ app.post('/api/file', (req, res) => {
     if (!reqPath) return res.status(400).json({ error: 'Path is required' });
     const filePath = getSafePath(reqPath);
     
-    // Ensure parent directory exists
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, content ?? '', 'utf8');
     res.json({ success: true, message: 'File saved successfully' });
@@ -189,7 +212,7 @@ app.post('/api/rename', (req, res) => {
   }
 });
 
-// 7. Execute code / run file (Streaming via SSE)
+// 7. Multi-Language Runner (Streaming via SSE)
 app.get('/api/run', (req, res) => {
   const filePathParam = req.query.path;
   const customCmd = req.query.cmd;
@@ -212,22 +235,70 @@ app.get('/api/run', (req, res) => {
   } else if (filePathParam) {
     const fullPath = getSafePath(filePathParam);
     const ext = path.extname(fullPath).toLowerCase();
-    
+    const fileName = path.basename(fullPath);
+    const fileNameWithoutExt = path.parse(fileName).name;
+    const fileDir = path.dirname(fullPath);
+
+    sendEvent('stdout', `> [Nemesis Runner] Menjalankan ${fileName}...\n----------------------------------------\n`);
+
     if (ext === '.py') {
       command = 'python';
       args = [fullPath];
     } else if (ext === '.js' || ext === '.mjs') {
       command = 'node';
       args = [fullPath];
+    } else if (ext === '.ts') {
+      // Node 22+ supports strip types natively
+      command = 'node';
+      args = ['--experimental-strip-types', fullPath];
+    } else if (ext === '.java') {
+      // In Java 11+, single-file source code programs can be run directly with `java <file.java>`!
+      command = 'java';
+      args = [fullPath];
+    } else if (ext === '.dart') {
+      command = 'dart';
+      args = ['run', fullPath];
+    } else if (ext === '.ps1') {
+      command = 'powershell.exe';
+      args = ['-ExecutionPolicy', 'Bypass', '-File', fullPath];
+    } else if (ext === '.bat' || ext === '.cmd') {
+      command = 'cmd.exe';
+      args = ['/c', fullPath];
+    } else if (ext === '.sh') {
+      const gitBash = 'E:\\Git\\bin\\bash.exe';
+      if (fs.existsSync(gitBash)) {
+        command = gitBash;
+        args = [fullPath];
+      } else {
+        command = 'bash';
+        args = [fullPath];
+      }
+    } else if (ext === '.c') {
+      command = 'cmd.exe';
+      const outExe = path.join(fileDir, `${fileNameWithoutExt}.exe`);
+      args = ['/c', `gcc "${fullPath}" -o "${outExe}" && "${outExe}"`];
+    } else if (ext === '.cpp' || ext === '.cc') {
+      command = 'cmd.exe';
+      const outExe = path.join(fileDir, `${fileNameWithoutExt}.exe`);
+      args = ['/c', `g++ "${fullPath}" -o "${outExe}" && "${outExe}"`];
+    } else if (ext === '.go') {
+      command = 'go';
+      args = ['run', fullPath];
+    } else if (ext === '.rs') {
+      command = 'cmd.exe';
+      const outExe = path.join(fileDir, `${fileNameWithoutExt}.exe`);
+      args = ['/c', `rustc "${fullPath}" -o "${outExe}" && "${outExe}"`];
+    } else if (ext === '.php') {
+      command = 'php';
+      args = [fullPath];
     } else {
-      sendEvent('stderr', `Unsupported executable format: ${ext}. Support: .py, .js\n`);
+      sendEvent('stderr', `Ekstensi "${ext}" belum memiliki konfigurasi runner otomatis.\nAnda dapat menjalankan perintah kustom lewat input terminal di bawah.\n`);
       sendEvent('exit', { code: 1 });
       res.end();
       return;
     }
-    sendEvent('stdout', `> Menjalankan ${path.basename(fullPath)}...\n----------------------------------------\n`);
   } else {
-    sendEvent('stderr', 'No file or command specified.\n');
+    sendEvent('stderr', 'Tidak ada file atau perintah yang dipilih.\n');
     sendEvent('exit', { code: 1 });
     res.end();
     return;
@@ -266,6 +337,6 @@ app.get('/api/run', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Backend server IDE berjalan di http://localhost:${PORT}`);
+  console.log(`Nemesis IDE Backend berjalan di http://localhost:${PORT}`);
   console.log(`Workspace folder: ${WORKSPACE_DIR}`);
 });
