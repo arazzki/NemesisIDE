@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { X, Play, Save, Code } from 'lucide-react';
 import { getLanguageFromPath, getFileBadgeColor, getLanguageName } from '../utils/languageHelper';
+import { registerAllSnippets } from '../utils/snippets';
 
 export default function EditorArea({
   tabs,
@@ -86,6 +87,9 @@ export default function EditorArea({
         'editor.selectionBackground': '#283457',
       }
     });
+
+    // Register all default code snippets (sout + tab, clg + tab, pr + tab, etc.)
+    registerAllSnippets(monaco);
   };
 
   const handleEditorDidMount = (editor, monaco) => {
@@ -215,6 +219,11 @@ export default function EditorArea({
               fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
               fontLigatures: true,
               scrollBeyondLastLine: false,
+              tabCompletion: 'on',
+              snippetSuggestions: 'top',
+              quickSuggestions: { other: true, comments: false, strings: false },
+              suggestOnTriggerCharacters: true,
+              acceptSuggestionOnEnter: 'on',
             }}
           />
         ) : (
@@ -229,6 +238,10 @@ export default function EditorArea({
             </p>
 
             <div className="bg-[#18181b] border border-[#27272a] rounded-lg p-4 w-72 text-xs space-y-2.5">
+              <div className="flex justify-between items-center text-zinc-400">
+                <span>Code Snippet</span>
+                <kbd className="bg-[#27272a] text-blue-300 px-1.5 py-0.5 rounded text-[11px] font-mono">sout, clg, pr + Tab</kbd>
+              </div>
               <div className="flex justify-between items-center text-zinc-400">
                 <span>Simpan File</span>
                 <kbd className="bg-[#27272a] text-zinc-200 px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl + S</kbd>
