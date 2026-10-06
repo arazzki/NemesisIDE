@@ -66,6 +66,15 @@ function getSafePath(relativePath) {
   return targetPath;
 }
 
+// Helper: create directory only if missing.
+// On Windows, fs.mkdirSync('E:\\', { recursive: true }) throws EPERM for drive roots,
+// so we must skip mkdir when the directory already exists.
+function ensureDir(dir) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
 // Recursively get file tree
 function getFileTree(dir, relativeTo = WORKSPACE_DIR) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -197,7 +206,7 @@ app.post('/api/file', (req, res) => {
     if (!reqPath) return res.status(400).json({ error: 'Path is required' });
     const filePath = getSafePath(reqPath);
     
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    ensureDir(path.dirname(filePath));
     fs.writeFileSync(filePath, content ?? '', 'utf8');
     res.json({ success: true, message: 'File saved successfully' });
   } catch (err) {
@@ -219,7 +228,7 @@ app.post('/api/create', (req, res) => {
     if (type === 'directory') {
       fs.mkdirSync(targetPath, { recursive: true });
     } else {
-      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+      ensureDir(path.dirname(targetPath));
       const fileName = path.basename(targetPath);
       const templateContent = getTemplateForFile(fileName);
       fs.writeFileSync(targetPath, templateContent, 'utf8');
@@ -268,7 +277,7 @@ app.post('/api/rename', (req, res) => {
       return res.status(400).json({ error: 'Target name already exists' });
     }
 
-    fs.mkdirSync(path.dirname(targetNew), { recursive: true });
+    ensureDir(path.dirname(targetNew));
     fs.renameSync(targetOld, targetNew);
     res.json({ success: true, message: 'Renamed successfully' });
   } catch (err) {
@@ -305,7 +314,7 @@ app.post('/api/move', (req, res) => {
       return res.status(400).json({ error: `Item "${itemName}" sudah ada di folder tujuan.` });
     }
 
-    fs.mkdirSync(destDirFullPath, { recursive: true });
+    ensureDir(destDirFullPath);
     fs.renameSync(sourceFullPath, destFullPath);
 
     res.json({ success: true, message: 'Item berhasil dipindahkan.' });
