@@ -28,6 +28,12 @@ export function getTemplateForFile(fileName) {
     case '.ts':
       return `interface AppConfig {\n  name: string;\n  active: boolean;\n}\n\nconst config: AppConfig = {\n  name: "${fileName}",\n  active: true\n};\n\nconsole.log(\`✨ Hello from \${config.name}!\`);\n`;
 
+    case '.tsx':
+      return `import React from 'react';\n\ninterface Props {\n  title: string;\n}\n\nexport const ${cleanIdentifier}: React.FC<Props> = ({ title }) => {\n  return <h1>{title}</h1>;\n};\n\nconsole.log("⚛️ Hello from ${fileName} via tsx engine!");\n`;
+
+    case '.jsx':
+      return `import React from 'react';\n\nexport default function ${cleanIdentifier}() {\n  return <h1>Hello from ${cleanIdentifier}</h1>;\n}\n\nconsole.log("⚛️ Hello from ${fileName} via tsx engine!");\n`;
+
     case '.dart':
       return `void main() {\n  print('🎯 Hello from ${fileName}!');\n}\n`;
 

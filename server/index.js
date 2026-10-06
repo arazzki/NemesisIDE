@@ -216,10 +216,14 @@ app.get('/api/run', (req, res) => {
     } else if (ext === '.js' || ext === '.mjs') {
       command = 'node';
       args = [fileName];
-    } else if (ext === '.ts') {
-      // Node 22+ supports strip types natively
+    } else if (ext === '.ts' || ext === '.tsx' || ext === '.jsx') {
       command = 'node';
-      args = ['--experimental-strip-types', fileName];
+      const tsxCli = path.resolve(__dirname, '..', 'node_modules', 'tsx', 'dist', 'cli.mjs');
+      if (fs.existsSync(tsxCli)) {
+        args = [tsxCli, fileName];
+      } else {
+        args = ['--experimental-strip-types', fileName];
+      }
     } else if (ext === '.java') {
       // In Java 11+, single-file source code programs can be run directly with `java <file.java>`!
       command = 'java';
@@ -227,6 +231,7 @@ app.get('/api/run', (req, res) => {
     } else if (ext === '.dart') {
       command = 'dart';
       args = ['run', fileName];
+      useShell = process.platform === 'win32';
     } else if (ext === '.ps1') {
       command = 'powershell.exe';
       args = ['-ExecutionPolicy', 'Bypass', '-File', fileName];
@@ -287,7 +292,27 @@ app.get('/api/run', (req, res) => {
   });
 
   child.on('error', (err) => {
-    sendEvent('stderr', `Process error: ${err.message}\n`);
+    if (err.code === 'ENOENT') {
+      const toolNames = {
+        php: { name: 'PHP', url: 'https://windows.php.net/download/' },
+        go: { name: 'Go (Golang)', url: 'https://go.dev/dl/' },
+        python: { name: 'Python', url: 'https://www.python.org/downloads/' },
+        py: { name: 'Python', url: 'https://www.python.org/downloads/' },
+        rustc: { name: 'Rust (rustc/cargo)', url: 'https://www.rust-lang.org/tools/install' },
+        gcc: { name: 'GCC (MinGW / C Compiler)', url: 'https://winlibs.com/' },
+        'g++': { name: 'G++ (MinGW / C++ Compiler)', url: 'https://winlibs.com/' },
+        dart: { name: 'Dart SDK', url: 'https://dart.dev/get-dart' },
+        java: { name: 'Java JDK', url: 'https://adoptium.net/' },
+        node: { name: 'Node.js', url: 'https://nodejs.org/' }
+      };
+      const info = toolNames[command] || { name: command, url: '' };
+      sendEvent('stderr', `\n⚠️ [Runtime Not Found] Program "${info.name}" tidak ditemukan di komputer Anda (PATH)!\n\n` +
+        `Penyebab: Bahasa ini membutuhkan compiler/interpreter "${command}" yang belum terpasang di sistem operasi Windows Anda.\n` +
+        (info.url ? `Download & Install: ${info.url}\n\n` : '\n') +
+        `Catatan: Setelah menginstall ${info.name}, restart Nemesis IDE agar PATH baru terbaca otomatis.\n`);
+    } else {
+      sendEvent('stderr', `Process error: ${err.message}\n`);
+    }
     sendEvent('exit', { code: -1 });
     res.end();
   });
