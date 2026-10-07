@@ -56,6 +56,11 @@ if (!fs.existsSync(WORKSPACE_DIR)) {
 app.use(cors());
 app.use(express.json());
 
+// Serve static workspace files for live web preview
+app.use('/workspace-preview', (req, res, next) => {
+  express.static(WORKSPACE_DIR)(req, res, next);
+});
+
 // Helper: validate and resolve safe paths inside WORKSPACE_DIR
 function getSafePath(relativePath) {
   const safeRelative = (relativePath || '').replace(/^(\.\.[\/\\])+/, '');

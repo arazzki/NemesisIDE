@@ -1,6 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
-import { X, Play, Save, Code, FolderOpen } from 'lucide-react';
+import { 
+  X, Play, Save, Code, FolderOpen, Sparkles, Globe, 
+  Monitor, Tablet, Smartphone, RotateCw, ExternalLink 
+} from 'lucide-react';
 import { getLanguageFromPath, getFileBadgeColor, getLanguageName } from '../utils/languageHelper';
 import { registerAllSnippets } from '../utils/snippets';
 import { getTheme } from '../utils/themeHelper';
@@ -23,9 +26,122 @@ export default function EditorArea({
   const theme = userTheme || getTheme(editorSettings.theme);
   const activeTab = tabs.find((t) => t.path === activeTabPath);
   const editorRef = useRef(null);
+  const splitAreaRef = useRef(null);
 
-  // Setup vibrant custom themes before Monaco mounts
+  // Live Web Preview states
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewSplitRatio, setPreviewSplitRatio] = useState(50);
+  const [previewDevice, setPreviewDevice] = useState('responsive'); // 'responsive' | 'tablet' | 'mobile'
+  const [debouncedContent, setDebouncedContent] = useState('');
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+  const [isDraggingSplit, setIsDraggingSplit] = useState(false);
+
+  const isHtml = Boolean(activeTab && /\.(html?|svg)$/i.test(activeTab.path));
+
+  // Debounce active tab content update for Live Preview (smooth typing)
+  useEffect(() => {
+    if (!activeTab) return;
+    const timer = setTimeout(() => {
+      setDebouncedContent(activeTab.content || '');
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [activeTab?.content]);
+
+  // Handle draggable split resize between Editor and Live Preview
+  const handleSplitMouseDown = (e) => {
+    e.preventDefault();
+    setIsDraggingSplit(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDraggingSplit || !splitAreaRef.current) return;
+      const rect = splitAreaRef.current.getBoundingClientRect();
+      const newRatio = ((e.clientX - rect.left) / rect.width) * 100;
+      if (newRatio >= 20 && newRatio <= 80) {
+        setPreviewSplitRatio(newRatio);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingSplit) {
+        setIsDraggingSplit(false);
+      }
+    };
+
+    if (isDraggingSplit) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingSplit]);
+
+  // Build preview HTML with base tag for workspace asset resolution
+  const previewHtml = useMemo(() => {
+    if (!activeTab) return '';
+    let html = debouncedContent || '';
+
+    // Inject <base href="/workspace-preview/"> so relative links (CSS, JS, images) resolve via workspace
+    const baseTag = '<base href="/workspace-preview/">';
+    if (/<head[^>]*>/i.test(html)) {
+      html = html.replace(/<head[^>]*>/i, `$&${baseTag}`);
+    } else if (/<html[^>]*>/i.test(html)) {
+      html = html.replace(/<html[^>]*>/i, `$&<head>${baseTag}</head>`);
+    } else {
+      html = `${baseTag}${html}`;
+    }
+    return html;
+  }, [debouncedContent, activeTab?.path]);
+
+  // Format document action (Shift + Alt + F)
+  const handleFormatDocument = async () => {
+    if (!editorRef.current) return null;
+    try {
+      const action = editorRef.current.getAction('editor.action.formatDocument');
+      if (action) {
+        await action.run();
+      }
+    } catch (err) {
+      console.warn('[FormatDocument] Failed:', err);
+    }
+    return editorRef.current ? editorRef.current.getValue() : null;
+  };
+
+  // Save handler with format on save check
+  const handleSave = async () => {
+    if (!activeTab) return;
+    let formattedContent = null;
+    if (editorSettings?.formatOnSave && editorRef.current) {
+      formattedContent = await handleFormatDocument();
+    }
+    onSaveFile(activeTab.path, formattedContent);
+  };
+
+  // Setup custom themes & formatters before Monaco mounts
   const handleEditorWillMount = (monaco) => {
+    // HTML formatting defaults
+    if (monaco.languages && monaco.languages.html) {
+      monaco.languages.html.htmlDefaults.setOptions({
+        format: {
+          tabSize: editorSettings.tabSize || 2,
+          insertSpaces: true,
+          wrapLineLength: 120,
+          unformatted: 'wbr',
+          contentUnformatted: 'pre,code,textarea',
+          indentInnerHtml: true,
+          preserveNewLines: true,
+          maxPreserveNewLines: 2,
+          indentHandlebars: false,
+          endWithNewline: false,
+          extraLiners: 'head, body, /html',
+          wrapAttributes: 'auto'
+        }
+      });
+    }
+
     // Theme 1: Nemesis Dark (One Dark Pro inspired)
     monaco.editor.defineTheme('nemesis-dark', {
       base: 'vs-dark',
@@ -137,10 +253,18 @@ export default function EditorArea({
       }
     });
 
-    // Add Ctrl+S / Cmd+S save shortcut
+    // Add Ctrl+S / Cmd+S save shortcut (with auto-formatting)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      onSaveFile();
+      handleSave();
     });
+
+    // Add Shift+Alt+F format shortcut
+    editor.addCommand(
+      monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF,
+      () => {
+        handleFormatDocument();
+      }
+    );
   };
 
   return (
@@ -202,14 +326,14 @@ export default function EditorArea({
           })}
         </div>
 
-        {/* Action Buttons (Save & Run) */}
+        {/* Action Buttons (Format, Live Preview, Save, Run) */}
         {activeTab && (
           <div 
             style={{ 
               backgroundColor: theme.tabBar.actionAreaBg, 
               borderLeft: `1px solid ${theme.tabBar.actionAreaBorder}` 
             }} 
-            className="flex items-center space-x-2 px-3 h-full transition-colors"
+            className="flex items-center space-x-1.5 px-3 h-full transition-colors"
           >
             <span 
               style={{ color: theme.isLight ? '#4b5563' : '#a1a1aa' }} 
@@ -218,8 +342,41 @@ export default function EditorArea({
               {getLanguageName(activeTab.path)}
             </span>
 
+            {/* Format Document Button */}
             <button
-              onClick={() => onSaveFile()}
+              onClick={handleFormatDocument}
+              title="Format Dokumen (Shift + Alt + F)"
+              className={`flex items-center space-x-1 px-2.5 py-1 rounded text-xs transition-colors ${
+                theme.isLight
+                  ? 'hover:bg-zinc-200 text-zinc-700'
+                  : 'hover:bg-zinc-700/60 text-zinc-300 hover:text-white'
+              }`}
+            >
+              <Sparkles size={13} className="text-amber-400" />
+              <span className="hidden sm:inline">Format</span>
+            </button>
+
+            {/* Live Web Preview Toggle (HTML / SVG) */}
+            {isHtml && (
+              <button
+                onClick={() => setIsPreviewOpen(!isPreviewOpen)}
+                title={isPreviewOpen ? "Tutup Live Preview" : "Buka Live Web Preview di Editor"}
+                className={`flex items-center space-x-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                  isPreviewOpen
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : theme.isLight
+                      ? 'hover:bg-zinc-200 text-zinc-700'
+                      : 'hover:bg-zinc-700/60 text-zinc-300 hover:text-white'
+                }`}
+              >
+                <Globe size={13} className={isPreviewOpen ? 'text-white' : 'text-blue-400'} />
+                <span className="hidden sm:inline">{isPreviewOpen ? 'Tutup Preview' : 'Live Preview'}</span>
+              </button>
+            )}
+
+            {/* Save Button */}
+            <button
+              onClick={handleSave}
               disabled={!activeTab.isDirty}
               title="Simpan File (Ctrl + S)"
               className={`flex items-center space-x-1 px-2.5 py-1 rounded text-xs transition-colors ${
@@ -232,6 +389,7 @@ export default function EditorArea({
               <span>Simpan</span>
             </button>
 
+            {/* Run Code Button */}
             <button
               onClick={onRunCode}
               disabled={isRunning}
@@ -250,39 +408,195 @@ export default function EditorArea({
       </div>
 
       {/* Editor Main Content or Welcome Screen */}
-      <div className="flex-1 relative">
+      <div ref={splitAreaRef} className="flex-1 relative overflow-hidden">
         {activeTab ? (
-          <Editor
-            height="100%"
-            path={activeTab.path}
-            defaultLanguage={getLanguageFromPath(activeTab.path)}
-            language={getLanguageFromPath(activeTab.path)}
-            value={activeTab.content}
-            theme={editorSettings.theme}
-            beforeMount={handleEditorWillMount}
-            onChange={(newVal) => onContentChange(activeTab.path, newVal ?? '')}
-            onMount={handleEditorDidMount}
-            options={{
-              fontSize: editorSettings.fontSize,
-              tabSize: editorSettings.tabSize,
-              wordWrap: editorSettings.wordWrap,
-              minimap: { enabled: editorSettings.minimap },
-              smoothScrolling: true,
-              cursorBlinking: 'smooth',
-              cursorSmoothCaretAnimation: 'on',
-              formatOnPaste: true,
-              bracketPairColorization: { enabled: true },
-              automaticLayout: true,
-              fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
-              fontLigatures: true,
-              scrollBeyondLastLine: false,
-              tabCompletion: 'on',
-              snippetSuggestions: 'top',
-              quickSuggestions: { other: true, comments: false, strings: false },
-              suggestOnTriggerCharacters: true,
-              acceptSuggestionOnEnter: 'on',
-            }}
-          />
+          <div className="flex h-full w-full overflow-hidden">
+            {/* Left Panel: Monaco Editor */}
+            <div 
+              style={{ 
+                width: isPreviewOpen && isHtml ? `${previewSplitRatio}%` : '100%' 
+              }} 
+              className="h-full relative overflow-hidden"
+            >
+              <Editor
+                height="100%"
+                path={activeTab.path}
+                defaultLanguage={getLanguageFromPath(activeTab.path)}
+                language={getLanguageFromPath(activeTab.path)}
+                value={activeTab.content}
+                theme={editorSettings.theme}
+                beforeMount={handleEditorWillMount}
+                onChange={(newVal) => onContentChange(activeTab.path, newVal ?? '')}
+                onMount={handleEditorDidMount}
+                options={{
+                  fontSize: editorSettings.fontSize,
+                  tabSize: editorSettings.tabSize,
+                  wordWrap: editorSettings.wordWrap,
+                  minimap: { enabled: editorSettings.minimap },
+                  smoothScrolling: true,
+                  cursorBlinking: 'smooth',
+                  cursorSmoothCaretAnimation: 'on',
+                  formatOnPaste: true,
+                  bracketPairColorization: { enabled: true },
+                  automaticLayout: true,
+                  fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
+                  fontLigatures: true,
+                  scrollBeyondLastLine: false,
+                  tabCompletion: 'on',
+                  snippetSuggestions: 'top',
+                  quickSuggestions: { other: true, comments: false, strings: false },
+                  suggestOnTriggerCharacters: true,
+                  acceptSuggestionOnEnter: 'on',
+                }}
+              />
+            </div>
+
+            {/* Draggable Divider */}
+            {isPreviewOpen && isHtml && (
+              <div
+                onMouseDown={handleSplitMouseDown}
+                style={{
+                  backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a'
+                }}
+                className={`w-1.5 hover:w-2 select-none cursor-col-resize flex items-center justify-center transition-all z-20 shrink-0 ${
+                  isDraggingSplit ? '!bg-blue-500 !w-2' : 'hover:bg-blue-500'
+                }`}
+                title="Geser untuk mengatur perbandingan layar editor & preview"
+              >
+                <div className="w-0.5 h-6 bg-zinc-400/50 rounded" />
+              </div>
+            )}
+
+            {/* Right Panel: Live Web Preview */}
+            {isPreviewOpen && isHtml && (
+              <div 
+                style={{ 
+                  width: `${100 - previewSplitRatio}%`,
+                  backgroundColor: theme.tabBar.bg,
+                  borderColor: theme.tabBar.border 
+                }} 
+                className="h-full flex flex-col border-l overflow-hidden transition-colors"
+              >
+                {/* Preview Toolbar */}
+                <div 
+                  style={{ 
+                    backgroundColor: theme.tabBar.actionAreaBg,
+                    borderColor: theme.tabBar.border 
+                  }}
+                  className="h-9 min-h-[36px] border-b flex items-center justify-between px-3 select-none text-xs"
+                >
+                  {/* Left: Live Indicator */}
+                  <div className="flex items-center space-x-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span 
+                      style={{ color: theme.header.text }} 
+                      className="text-[11px] font-bold tracking-wide flex items-center space-x-1"
+                    >
+                      <span>LIVE PREVIEW</span>
+                    </span>
+                  </div>
+
+                  {/* Center: Device Switchers */}
+                  <div className="flex items-center space-x-1 bg-black/10 dark:bg-white/5 p-0.5 rounded border border-white/5">
+                    <button
+                      onClick={() => setPreviewDevice('responsive')}
+                      title="Mode Responsif (100% Lebar)"
+                      className={`p-1 rounded text-xs flex items-center space-x-1 transition-colors ${
+                        previewDevice === 'responsive'
+                          ? 'bg-blue-600 text-white font-medium shadow-xs'
+                          : 'opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <Monitor size={12} />
+                      <span className="text-[10px] hidden md:inline">100%</span>
+                    </button>
+                    <button
+                      onClick={() => setPreviewDevice('tablet')}
+                      title="Mode Tablet (768px)"
+                      className={`p-1 rounded text-xs flex items-center space-x-1 transition-colors ${
+                        previewDevice === 'tablet'
+                          ? 'bg-blue-600 text-white font-medium shadow-xs'
+                          : 'opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <Tablet size={12} />
+                      <span className="text-[10px] hidden md:inline">Tablet</span>
+                    </button>
+                    <button
+                      onClick={() => setPreviewDevice('mobile')}
+                      title="Mode Mobile (375px)"
+                      className={`p-1 rounded text-xs flex items-center space-x-1 transition-colors ${
+                        previewDevice === 'mobile'
+                          ? 'bg-blue-600 text-white font-medium shadow-xs'
+                          : 'opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <Smartphone size={12} />
+                      <span className="text-[10px] hidden md:inline">Mobile</span>
+                    </button>
+                  </div>
+
+                  {/* Right: Actions */}
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => setPreviewRefreshKey((k) => k + 1)}
+                      title="Muat Ulang Preview (Reload)"
+                      className="p-1 rounded hover:bg-zinc-500/20 opacity-70 hover:opacity-100 transition-colors"
+                    >
+                      <RotateCw size={12} />
+                    </button>
+
+                    <button
+                      onClick={onRunCode}
+                      title="Buka di Browser Eksternal (Default Browser)"
+                      className="p-1 rounded hover:bg-zinc-500/20 opacity-70 hover:opacity-100 transition-colors"
+                    >
+                      <ExternalLink size={12} />
+                    </button>
+
+                    <button
+                      onClick={() => setIsPreviewOpen(false)}
+                      title="Tutup Preview"
+                      className="p-1 rounded hover:bg-red-500/20 hover:text-red-400 opacity-70 hover:opacity-100 transition-colors"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Preview Frame Body */}
+                <div 
+                  style={{
+                    backgroundColor: theme.isLight ? '#f3f4f6' : '#111116'
+                  }}
+                  className="flex-1 overflow-auto flex items-center justify-center p-3 relative"
+                >
+                  <div 
+                    className={`h-full transition-all duration-200 flex flex-col bg-white overflow-hidden ${
+                      previewDevice === 'mobile'
+                        ? 'w-[375px] max-w-full shadow-2xl rounded-2xl border-4 border-zinc-700/80 ring-1 ring-black/10'
+                        : previewDevice === 'tablet'
+                          ? 'w-[768px] max-w-full shadow-2xl rounded-xl border-4 border-zinc-700/80 ring-1 ring-black/10'
+                          : 'w-full shadow-none rounded-none border-none'
+                    }`}
+                  >
+                    <iframe
+                      key={previewRefreshKey}
+                      srcDoc={previewHtml}
+                      title="Nemesis Live Web Preview"
+                      sandbox="allow-scripts allow-modals allow-forms allow-same-origin allow-popups"
+                      className={`w-full h-full border-none bg-white ${
+                        isDraggingSplit ? 'pointer-events-none select-none' : ''
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           /* Empty / Welcome State */
           <div 
@@ -329,6 +643,15 @@ export default function EditorArea({
                   className="px-1.5 py-0.5 rounded text-[11px] font-mono"
                 >
                   Ctrl + O
+                </kbd>
+              </div>
+              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
+                <span>Format Dokumen</span>
+                <kbd 
+                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#2563eb' : '#93c5fd' }} 
+                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+                >
+                  Shift + Alt + F
                 </kbd>
               </div>
               <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>

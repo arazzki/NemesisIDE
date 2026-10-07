@@ -31,7 +31,8 @@ export default function App() {
       fontSize: 14,
       tabSize: 2,
       wordWrap: 'on',
-      minimap: true
+      minimap: true,
+      formatOnSave: true
     };
   });
 
@@ -232,20 +233,21 @@ export default function App() {
   };
 
   // Save current active file
-  const handleSaveFile = async (path = activeTabPath) => {
+  const handleSaveFile = async (path = activeTabPath, contentOverride = null) => {
     const tab = tabs.find((t) => t.path === path);
     if (!tab) return;
+    const finalContent = contentOverride !== null ? contentOverride : tab.content;
 
     try {
       const res = await fetch('/api/file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: tab.path, content: tab.content })
+        body: JSON.stringify({ path: tab.path, content: finalContent })
       });
       const data = await res.json();
       if (data.success) {
         setTabs((prev) =>
-          prev.map((t) => (t.path === path ? { ...t, originalContent: t.content, isDirty: false } : t))
+          prev.map((t) => (t.path === path ? { ...t, content: finalContent, originalContent: finalContent, isDirty: false } : t))
         );
         setSaveStatus(`Tersimpan: ${tab.name}`);
         setTimeout(() => setSaveStatus(''), 3000);
