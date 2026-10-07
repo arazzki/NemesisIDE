@@ -86,7 +86,14 @@ function getFileTree(dir, relativeTo = WORKSPACE_DIR) {
   });
 
   return sortedEntries
-    .filter(entry => !entry.name.startsWith('.') && entry.name !== 'node_modules' && !entry.name.endsWith('.class'))
+    .filter(entry => 
+      !entry.name.startsWith('.') && 
+      entry.name !== 'node_modules' && 
+      !entry.name.endsWith('.class') &&
+      !entry.name.endsWith('.exe') &&
+      !entry.name.endsWith('.o') &&
+      !entry.name.endsWith('.obj')
+    )
     .map(entry => {
       const fullPath = path.join(dir, entry.name);
       const relPath = path.relative(relativeTo, fullPath).replace(/\\/g, '/');
@@ -534,25 +541,31 @@ app.get('/api/run', (req, res) => {
       }
     } else if (ext === '.c') {
       command = 'cmd.exe';
-      const outExe = `${fileNameWithoutExt}.exe`;
+      const binDir = path.join(fileDir, '.nemesis_bin');
+      ensureDir(binDir);
+      const outExe = path.join(binDir, `${fileNameWithoutExt}.exe`);
       const qFile = fileName.includes(' ') ? `"${fileName}"` : fileName;
-      const qExe = outExe.includes(' ') ? `"${outExe}"` : outExe;
-      args = ['/c', `gcc ${qFile} -o ${qExe} && ${qExe}`];
+      const qExe = `"${outExe}"`;
+      args = ['/c', `gcc ${qFile} -O2 -s -o ${qExe} && ${qExe}`];
     } else if (ext === '.cpp' || ext === '.cc') {
       command = 'cmd.exe';
-      const outExe = `${fileNameWithoutExt}.exe`;
+      const binDir = path.join(fileDir, '.nemesis_bin');
+      ensureDir(binDir);
+      const outExe = path.join(binDir, `${fileNameWithoutExt}.exe`);
       const qFile = fileName.includes(' ') ? `"${fileName}"` : fileName;
-      const qExe = outExe.includes(' ') ? `"${outExe}"` : outExe;
-      args = ['/c', `g++ ${qFile} -o ${qExe} && ${qExe}`];
+      const qExe = `"${outExe}"`;
+      args = ['/c', `g++ ${qFile} -O2 -s -o ${qExe} && ${qExe}`];
     } else if (ext === '.go') {
       command = 'go';
       args = ['run', fileName];
     } else if (ext === '.rs') {
       command = 'cmd.exe';
-      const outExe = `${fileNameWithoutExt}.exe`;
+      const binDir = path.join(fileDir, '.nemesis_bin');
+      ensureDir(binDir);
+      const outExe = path.join(binDir, `${fileNameWithoutExt}.exe`);
       const qFile = fileName.includes(' ') ? `"${fileName}"` : fileName;
-      const qExe = outExe.includes(' ') ? `"${outExe}"` : outExe;
-      args = ['/c', `rustc ${qFile} -o ${qExe} && ${qExe}`];
+      const qExe = `"${outExe}"`;
+      args = ['/c', `rustc ${qFile} -O -o ${qExe} && ${qExe}`];
     } else if (ext === '.php') {
       command = 'php';
       args = [fileName];
@@ -607,7 +620,11 @@ app.get('/api/run', (req, res) => {
   });
 
   child.stderr.on('data', (chunk) => {
-    sendEvent('stderr', chunk.toString());
+    const text = chunk.toString();
+    sendEvent('stderr', text);
+    if (/blocked|Device Guard|Application Control|virus|tidak dapat diselesaikan/i.test(text)) {
+      sendEvent('stderr', '\n💡 [Info Windows Security]: File executable baru sedang diverifikasi oleh Windows Security / Smart App Control.\nKlik "Run" sekali lagi untuk menjalankan program setelah pemindaian selesai.\nUntuk kenyamanan pengembangan, Anda juga dapat menambahkan folder workspace ke Exclusions di Windows Security (Virus & threat protection -> Exclusions).\n');
+    }
   });
 
   child.on('error', (err) => {
