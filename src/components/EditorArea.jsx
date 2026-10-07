@@ -1,12 +1,10 @@
-import React, { useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { X, Play, Save, Columns2, MoreHorizontal, FolderOpen } from 'lucide-react';
-import { getLanguageFromPath, getLanguageName } from '../utils/languageHelper';
+import { X, Play, Save, Code, FolderOpen } from 'lucide-react';
+import { getLanguageFromPath, getFileBadgeColor, getLanguageName } from '../utils/languageHelper';
 import { registerAllSnippets } from '../utils/snippets';
-import FileIcon from './FileIcon';
-import Breadcrumbs from './Breadcrumbs';
 
-const EditorArea = forwardRef(function EditorArea({
+export default function EditorArea({
   tabs,
   activeTabPath,
   workspaceInfo,
@@ -18,83 +16,38 @@ const EditorArea = forwardRef(function EditorArea({
   onRunCode,
   isRunning,
   editorSettings,
-  cursorPosition,
   onCursorChange
-}, ref) {
+}) {
   const activeTab = tabs.find((t) => t.path === activeTabPath);
   const editorRef = useRef(null);
 
-  // Expose jump to line method
-  useImperativeHandle(ref, () => ({
-    revealLine: (lineNumber) => {
-      if (editorRef.current) {
-        editorRef.current.revealLineInCenter(lineNumber);
-        editorRef.current.setPosition({ lineNumber, column: 1 });
-        editorRef.current.focus();
-      }
-    }
-  }));
-
-  // Define themes including official VS Code Dark Modern
+  // Setup vibrant custom themes before Monaco mounts
   const handleEditorWillMount = (monaco) => {
-    // Theme 1: VS Code Dark Modern (Default in modern VS Code)
-    monaco.editor.defineTheme('vs-dark-modern', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'keyword', foreground: '569cd6' },
-        { token: 'keyword.control', foreground: 'c586c0' },
-        { token: 'type', foreground: '4ec9b0' },
-        { token: 'type.identifier', foreground: '4ec9b0' },
-        { token: 'class', foreground: '4ec9b0' },
-        { token: 'identifier', foreground: '9cdcfe' },
-        { token: 'function', foreground: 'dcdcaa' },
-        { token: 'method', foreground: 'dcdcaa' },
-        { token: 'string', foreground: 'ce9178' },
-        { token: 'string.escape', foreground: 'd7ba7d' },
-        { token: 'number', foreground: 'b5cea8' },
-        { token: 'comment', foreground: '6a9955', fontStyle: 'italic' },
-        { token: 'delimiter', foreground: 'cccccc' },
-        { token: 'operator', foreground: 'd4d4d4' },
-        { token: 'tag', foreground: '569cd6' },
-        { token: 'tag.id', foreground: '9cdcfe' },
-        { token: 'tag.class', foreground: '9cdcfe' },
-        { token: 'attribute.name', foreground: '9cdcfe' },
-        { token: 'attribute.value', foreground: 'ce9178' },
-        { token: 'variable', foreground: '9cdcfe' },
-        { token: 'variable.parameter', foreground: '9cdcfe' },
-        { token: 'constant', foreground: '4fc1ff' },
-      ],
-      colors: {
-        'editor.background': '#1f1f1f',
-        'editor.foreground': '#cccccc',
-        'editorCursor.foreground': '#aeafad',
-        'editor.lineHighlightBackground': '#282828',
-        'editor.lineHighlightBorder': '#28282800',
-        'editorLineNumber.foreground': '#6e7681',
-        'editorLineNumber.activeForeground': '#cccccc',
-        'editor.selectionBackground': '#264f78',
-        'editor.inactiveSelectionBackground': '#3a3d41',
-        'editorIndentGuide.background': '#404040',
-        'editorIndentGuide.activeBackground': '#707070',
-        'editorBracketMatch.background': '#0064a7',
-        'editorBracketMatch.border': '#0064a7',
-      }
-    });
-
-    // Theme 2: Nemesis Dark (One Dark Pro)
+    // Theme 1: Nemesis Dark (One Dark Pro inspired)
     monaco.editor.defineTheme('nemesis-dark', {
       base: 'vs-dark',
       inherit: true,
       rules: [
         { token: 'keyword', foreground: 'c678dd', fontStyle: 'bold' },
+        { token: 'keyword.control', foreground: 'c678dd', fontStyle: 'bold' },
         { token: 'type', foreground: 'e5c07b', fontStyle: 'bold' },
+        { token: 'type.identifier', foreground: 'e5c07b' },
+        { token: 'class', foreground: 'e5c07b', fontStyle: 'bold' },
+        { token: 'identifier', foreground: 'abb2bf' },
         { token: 'function', foreground: '61afef', fontStyle: 'bold' },
+        { token: 'method', foreground: '61afef' },
         { token: 'string', foreground: '98c379' },
+        { token: 'string.escape', foreground: '56b6c2' },
         { token: 'number', foreground: 'd19a66' },
         { token: 'comment', foreground: '5c6370', fontStyle: 'italic' },
+        { token: 'delimiter', foreground: '56b6c2' },
+        { token: 'operator', foreground: '56b6c2' },
         { token: 'tag', foreground: 'e06c75' },
         { token: 'attribute.name', foreground: 'd19a66' },
+        { token: 'attribute.value', foreground: '98c379' },
+        { token: 'variable', foreground: 'e06c75' },
+        { token: 'variable.parameter', foreground: 'd19a66' },
+        { token: 'constant', foreground: 'd19a66', fontStyle: 'bold' },
       ],
       colors: {
         'editor.background': '#1a1a1f',
@@ -104,10 +57,15 @@ const EditorArea = forwardRef(function EditorArea({
         'editorLineNumber.foreground': '#4b5263',
         'editorLineNumber.activeForeground': '#abb2bf',
         'editor.selectionBackground': '#3e4451',
+        'editor.inactiveSelectionBackground': '#2c313a',
+        'editorIndentGuide.background': '#2d3139',
+        'editorIndentGuide.activeBackground': '#4e5666',
+        'editorBracketMatch.background': '#515a6b',
+        'editorBracketMatch.border': '#515a6b',
       }
     });
 
-    // Theme 3: Tokyo Night
+    // Theme 2: Tokyo Night (Neon Cyberpunk)
     monaco.editor.defineTheme('tokyo-night', {
       base: 'vs-dark',
       inherit: true,
@@ -118,6 +76,9 @@ const EditorArea = forwardRef(function EditorArea({
         { token: 'string', foreground: '9ece6a' },
         { token: 'number', foreground: 'ff9e64' },
         { token: 'comment', foreground: '565f89', fontStyle: 'italic' },
+        { token: 'delimiter', foreground: '89ddff' },
+        { token: 'operator', foreground: '89ddff' },
+        { token: 'variable', foreground: 'f7768e' },
       ],
       colors: {
         'editor.background': '#16161e',
@@ -129,74 +90,63 @@ const EditorArea = forwardRef(function EditorArea({
       }
     });
 
+    // Register all default code snippets (sout + tab, clg + tab, pr + tab, etc.)
     registerAllSnippets(monaco);
   };
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
 
+    // Track cursor changes for Status Bar
     editor.onDidChangeCursorPosition((e) => {
       if (onCursorChange) {
         onCursorChange(e.position.lineNumber, e.position.column);
       }
     });
 
+    // Add Ctrl+S / Cmd+S save shortcut
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       onSaveFile();
     });
   };
 
-  const handleJumpToLine = (lineNumber) => {
-    if (editorRef.current) {
-      editorRef.current.revealLineInCenter(lineNumber);
-      editorRef.current.setPosition({ lineNumber, column: 1 });
-      editorRef.current.focus();
-    }
-  };
-
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#1f1f1f] overflow-hidden">
-      {/* VS Code Tab Bar & Controls */}
-      <div className="flex items-center justify-between bg-[#181818] border-b border-[#2b2b2b] h-[35px] select-none">
+    <div className="flex-1 flex flex-col h-full bg-[#1e1e24] overflow-hidden">
+      {/* Tab Bar & Action Buttons Header */}
+      <div className="flex items-center justify-between bg-[#141416] border-b border-[#27272a] h-9 select-none">
         {/* Open Tabs */}
         <div className="flex items-center h-full overflow-x-auto no-scrollbar flex-1">
           {tabs.map((tab) => {
             const isActive = tab.path === activeTabPath;
+            const badgeClasses = getFileBadgeColor(tab.path).split(' ');
+            const dotBg = badgeClasses[1] || 'bg-blue-400';
 
             return (
               <div
                 key={tab.path}
                 onClick={() => onSelectTab(tab.path)}
-                className={`group flex items-center h-full px-3 text-[12px] border-r border-[#262626] cursor-pointer transition-colors max-w-xs relative ${
+                className={`group flex items-center h-full px-3 text-xs border-r border-[#27272a] cursor-pointer transition-colors max-w-xs ${
                   isActive
-                    ? 'bg-[#1f1f1f] text-white border-t-2 border-t-[#007acc] font-medium'
-                    : 'bg-[#181818] text-[#9d9d9d] hover:bg-[#1f1f1f]/60 hover:text-[#cccccc]'
+                    ? 'bg-[#1a1a1f] text-white border-t-2 border-t-blue-500 font-medium'
+                    : 'bg-[#141416] text-zinc-400 hover:bg-[#1b1b1e] hover:text-zinc-200'
                 }`}
               >
-                {/* File Icon */}
-                <span className="mr-2 flex items-center">
-                  <FileIcon filename={tab.name} size={15} />
-                </span>
-
+                <span className={`w-2 h-2 rounded-full mr-2 ${dotBg}`} />
                 <span className="truncate mr-2">{tab.name}</span>
 
-                {/* Close Button or Dirty Indicator Dot */}
-                <div className="flex items-center ml-auto">
+                {/* Dirty indicator or close button */}
+                <div className="flex items-center">
                   {tab.isDirty && (
-                    <span 
-                      className={`w-2 h-2 rounded-full bg-white mr-1 group-hover:hidden`} 
-                      title="File belum disimpan"
-                    />
+                    <span className="w-2 h-2 rounded-full bg-blue-400 group-hover:hidden mr-1" />
                   )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onCloseTab(tab.path);
                     }}
-                    title="Close (Ctrl+W)"
-                    className={`p-0.5 rounded hover:bg-[#3f3f46] text-[#858585] hover:text-white ${
-                      tab.isDirty ? 'hidden group-hover:block' : 'opacity-0 group-hover:opacity-100'
-                    } ${isActive ? 'opacity-100' : ''}`}
+                    className={`p-0.5 rounded hover:bg-[#3f3f46] text-zinc-400 hover:text-white ${
+                      tab.isDirty ? 'hidden group-hover:block' : ''
+                    }`}
                   >
                     <X size={13} />
                   </button>
@@ -206,52 +156,45 @@ const EditorArea = forwardRef(function EditorArea({
           })}
         </div>
 
-        {/* Tab Right Actions: Run Code, Split Editor, More */}
+        {/* Action Buttons (Save & Run) */}
         {activeTab && (
-          <div className="flex items-center space-x-1 px-2 bg-[#181818] h-full shrink-0">
-            {/* Play / Run Button */}
+          <div className="flex items-center space-x-2 px-3 border-l border-[#27272a] bg-[#141416] h-full">
+            <span className="text-[11px] text-zinc-400 font-mono hidden md:inline mr-1">
+              {getLanguageName(activeTab.path)}
+            </span>
+
+            <button
+              onClick={() => onSaveFile()}
+              disabled={!activeTab.isDirty}
+              title="Simpan File (Ctrl + S)"
+              className={`flex items-center space-x-1 px-2.5 py-1 rounded text-xs transition-colors ${
+                activeTab.isDirty
+                  ? 'bg-blue-600/90 hover:bg-blue-600 text-white shadow-sm'
+                  : 'text-zinc-500 cursor-default'
+              }`}
+            >
+              <Save size={13} />
+              <span>Simpan</span>
+            </button>
+
             <button
               onClick={onRunCode}
               disabled={isRunning}
-              title={`Jalankan ${getLanguageName(activeTab.path)} (F5)`}
-              className={`flex items-center space-x-1 px-2 py-1 rounded text-xs transition-all ${
+              title={`Jalankan ${getLanguageName(activeTab.path)} (Run)`}
+              className={`flex items-center space-x-1.5 px-3 py-1 rounded text-xs font-semibold shadow-sm transition-all ${
                 isRunning
-                  ? 'text-zinc-600 cursor-not-allowed'
-                  : 'text-emerald-400 hover:bg-[#2a2a2a] hover:text-emerald-300'
+                  ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-700/30'
               }`}
             >
-              <Play size={13} className={isRunning ? 'fill-zinc-600' : 'fill-emerald-400'} />
-            </button>
-
-            {/* Split Editor */}
-            <button
-              title="Split Editor Right"
-              className="p-1 rounded text-[#858585] hover:text-white hover:bg-[#2a2a2a] transition-colors"
-            >
-              <Columns2 size={14} />
-            </button>
-
-            {/* More Actions */}
-            <button
-              title="More Actions..."
-              className="p-1 rounded text-[#858585] hover:text-white hover:bg-[#2a2a2a] transition-colors"
-            >
-              <MoreHorizontal size={14} />
+              <Play size={13} className="fill-white" />
+              <span>{isRunning ? 'Berjalan...' : 'Run Code'}</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* VS Code Breadcrumbs Bar (Directly below tab bar) */}
-      {activeTab && (
-        <Breadcrumbs
-          activeFile={activeTab}
-          cursorPosition={cursorPosition}
-          onNavigateLine={handleJumpToLine}
-        />
-      )}
-
-      {/* Editor Content or Empty Welcome */}
+      {/* Editor Main Content or Welcome Screen */}
       <div className="flex-1 relative">
         {activeTab ? (
           <Editor
@@ -260,7 +203,7 @@ const EditorArea = forwardRef(function EditorArea({
             defaultLanguage={getLanguageFromPath(activeTab.path)}
             language={getLanguageFromPath(activeTab.path)}
             value={activeTab.content}
-            theme={editorSettings.theme || 'vs-dark-modern'}
+            theme={editorSettings.theme}
             beforeMount={handleEditorWillMount}
             onChange={(newVal) => onContentChange(activeTab.path, newVal ?? '')}
             onMount={handleEditorDidMount}
@@ -283,10 +226,6 @@ const EditorArea = forwardRef(function EditorArea({
               quickSuggestions: { other: true, comments: false, strings: false },
               suggestOnTriggerCharacters: true,
               acceptSuggestionOnEnter: 'on',
-              lineNumbers: 'on',
-              renderLineHighlight: 'all',
-              overviewRulerBorder: false,
-              hideCursorInOverviewRuler: true
             }}
           />
         ) : (
@@ -300,34 +239,38 @@ const EditorArea = forwardRef(function EditorArea({
               />
             </div>
             <p className="text-xs text-zinc-400 mb-5 text-center max-w-sm">
-              Tarik & lepaskan folder dari Desktop ke sini, atau klik tombol di bawah untuk membuka project.
+              Tarik & lepaskan (Drag & drop) folder dari Desktop ke sini, atau klik tombol di bawah untuk membuka project.
             </p>
 
             <button
               onClick={() => onOpenFolder && onOpenFolder()}
-              className="mb-6 flex items-center space-x-2 bg-[#007acc] hover:bg-[#0062a3] text-white text-xs font-semibold px-4 py-2 rounded shadow-md transition-all"
+              className="mb-6 flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-lg shadow-blue-500/20 border border-blue-400/30 transition-all hover:scale-105"
             >
-              <FolderOpen size={15} />
-              <span>Buka Folder Project</span>
-              <kbd className="bg-black/30 text-white text-[10px] px-1.5 py-0.5 rounded font-mono ml-1.5">Ctrl+O</kbd>
+              <FolderOpen size={15} className="text-amber-300" />
+              <span>Buka Folder dari Desktop / PC</span>
+              <kbd className="bg-white/20 text-blue-100 text-[10px] px-1.5 py-0.5 rounded font-mono ml-1.5">Ctrl+O</kbd>
             </button>
 
-            <div className="bg-[#18181b] border border-[#2b2b2b] rounded p-4 w-72 text-xs space-y-2">
-              <div className="flex justify-between items-center text-[#858585]">
-                <span>Show All Commands</span>
-                <kbd className="bg-[#2a2a2a] text-[#cccccc] px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl + Shift + P</kbd>
+            <div className="bg-[#18181b] border border-[#27272a] rounded-lg p-4 w-72 text-xs space-y-2.5">
+              <div className="flex justify-between items-center text-zinc-400">
+                <span>Buka Folder Project</span>
+                <kbd className="bg-[#27272a] text-blue-300 px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl + O</kbd>
               </div>
-              <div className="flex justify-between items-center text-[#858585]">
-                <span>Go to File</span>
-                <kbd className="bg-[#2a2a2a] text-[#cccccc] px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl + P</kbd>
+              <div className="flex justify-between items-center text-zinc-400">
+                <span>Code Snippet</span>
+                <kbd className="bg-[#27272a] text-blue-300 px-1.5 py-0.5 rounded text-[11px] font-mono">sout, clg, pr + Tab</kbd>
               </div>
-              <div className="flex justify-between items-center text-[#858585]">
+              <div className="flex justify-between items-center text-zinc-400">
+                <span>Simpan File</span>
+                <kbd className="bg-[#27272a] text-zinc-200 px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl + S</kbd>
+              </div>
+              <div className="flex justify-between items-center text-zinc-400">
+                <span>Jalankan Script</span>
+                <kbd className="bg-[#27272a] text-zinc-200 px-1.5 py-0.5 rounded text-[11px] font-mono">Tombol Run</kbd>
+              </div>
+              <div className="flex justify-between items-center text-zinc-400">
                 <span>Toggle Terminal</span>
-                <kbd className="bg-[#2a2a2a] text-[#cccccc] px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl + `</kbd>
-              </div>
-              <div className="flex justify-between items-center text-[#858585]">
-                <span>Toggle Primary Side Bar</span>
-                <kbd className="bg-[#2a2a2a] text-[#cccccc] px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl + B</kbd>
+                <kbd className="bg-[#27272a] text-zinc-200 px-1.5 py-0.5 rounded text-[11px] font-mono">Panel Bawah</kbd>
               </div>
             </div>
           </div>
@@ -335,6 +278,4 @@ const EditorArea = forwardRef(function EditorArea({
       </div>
     </div>
   );
-});
-
-export default EditorArea;
+}

@@ -1,18 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import TitleBar from './components/TitleBar';
+import React, { useState, useEffect, useCallback } from 'react';
 import ActivityBar from './components/ActivityBar';
 import Sidebar from './components/Sidebar';
 import EditorArea from './components/EditorArea';
 import TerminalPanel from './components/TerminalPanel';
 import StatusBar from './components/StatusBar';
-import CommandPalette from './components/CommandPalette';
 
 export default function App() {
   const [activeView, setActiveView] = useState('explorer');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [commandPaletteMode, setCommandPaletteMode] = useState('files'); // 'files' | 'commands'
-
   const [tree, setTree] = useState([]);
   const [tabs, setTabs] = useState([]);
   const [activeTabPath, setActiveTabPath] = useState(null);
@@ -26,14 +20,12 @@ export default function App() {
   const [cursorPosition, setCursorPosition] = useState({ line: 1, col: 1 });
   const [workspaceInfo, setWorkspaceInfo] = useState({ path: '', name: 'Workspace' });
   const [editorSettings, setEditorSettings] = useState({
-    theme: 'vs-dark-modern',
+    theme: 'nemesis-dark',
     fontSize: 14,
     tabSize: 2,
     wordWrap: 'on',
     minimap: true
   });
-
-  const editorAreaRef = useRef(null);
 
   // Fetch current workspace info
   const fetchWorkspaceInfo = useCallback(async () => {
@@ -150,6 +142,32 @@ export default function App() {
       }
     });
   }, [fetchTree, fetchWorkspaceInfo]);
+
+  // Global keyboard shortcuts (Ctrl+O to open folder)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        handleOpenFolder();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Global drag-and-drop: drop a folder from Windows Desktop into the IDE
+  const handleGlobalDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      const filePath = (window.electronAPI && typeof window.electronAPI.getPathForFile === 'function')
+        ? window.electronAPI.getPathForFile(file)
+        : file.path;
+      if (filePath) {
+        handleOpenFolder(filePath);
+      }
+    }
+  };
 
   // Tab management
   const handleSelectTab = (path) => {
@@ -345,13 +363,19 @@ export default function App() {
     }
   };
 
+  const activeEventSourceRef = useRef(null);
+
   // Stream execution helper (SSE)
   const executeProcess = (url) => {
+    if (activeEventSourceRef.current) {
+      activeEventSourceRef.current.close();
+    }
     setIsTerminalOpen(true);
     setIsRunning(true);
     setTerminalOutput((prev) => prev + `\n`);
 
     const eventSource = new EventSource(url);
+    activeEventSourceRef.current = eventSource;
 
     eventSource.onmessage = (event) => {
       try {
@@ -361,6 +385,7 @@ export default function App() {
         } else if (payload.type === 'exit') {
           setIsRunning(false);
           eventSource.close();
+          activeEventSourceRef.current = null;
         }
       } catch (err) {
         console.error('Error parsing SSE event:', err);
@@ -370,7 +395,17 @@ export default function App() {
     eventSource.onerror = () => {
       setIsRunning(false);
       eventSource.close();
+      activeEventSourceRef.current = null;
     };
+  };
+
+  const handleStopProcess = () => {
+    if (activeEventSourceRef.current) {
+      activeEventSourceRef.current.close();
+      activeEventSourceRef.current = null;
+    }
+    setIsRunning(false);
+    setTerminalOutput((prev) => prev + `\n[Proses dihentikan oleh pengguna]\n`);
   };
 
   // Run current active file
@@ -392,143 +427,46 @@ export default function App() {
     executeProcess(`/api/run?cmd=${encodeURIComponent(cmd)}`);
   };
 
-  // Global keyboard shortcuts (VS Code style)
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
-
-      // Ctrl + P: Quick Open Files
-      if (isCtrlOrMeta && !e.shiftKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        setCommandPaletteMode('files');
-        setIsCommandPaletteOpen(true);
-      }
-      // Ctrl + Shift + P: Command Palette
-      else if (isCtrlOrMeta && e.shiftKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        setCommandPaletteMode('commands');
-        setIsCommandPaletteOpen(true);
-      }
-      // Ctrl + B: Toggle primary sidebar
-      else if (isCtrlOrMeta && e.key.toLowerCase() === 'b') {
-        e.preventDefault();
-        setIsSidebarOpen((prev) => !prev);
-      }
-      // Ctrl + ` (backtick): Toggle terminal
-      else if (isCtrlOrMeta && (e.key === '`' || e.key === '~')) {
-        e.preventDefault();
-        setIsTerminalOpen((prev) => !prev);
-      }
-      // Ctrl + O: Open folder
-      else if (isCtrlOrMeta && !e.shiftKey && e.key.toLowerCase() === 'o') {
-        e.preventDefault();
-        handleOpenFolder();
-      }
-      // Ctrl + S: Save file
-      else if (isCtrlOrMeta && !e.shiftKey && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        handleSaveFile();
-      }
-      // F5: Run code
-      else if (e.key === 'F5') {
-        e.preventDefault();
-        handleRunCode();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTabPath, tabs]);
-
-  // Global drag-and-drop: drop a folder from Windows Desktop into the IDE
-  const handleGlobalDrop = (e) => {
-    e.preventDefault();
-    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      const filePath = (window.electronAPI && typeof window.electronAPI.getPathForFile === 'function')
-        ? window.electronAPI.getPathForFile(file)
-        : file.path;
-      if (filePath) {
-        handleOpenFolder(filePath);
-      }
-    }
-  };
-
-  const handleOpenCommandPalette = (mode = 'files') => {
-    setCommandPaletteMode(mode);
-    setIsCommandPaletteOpen(true);
-  };
-
   const activeTab = tabs.find((t) => t.path === activeTabPath);
 
   return (
     <div 
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleGlobalDrop}
-      className="flex flex-col h-screen w-screen overflow-hidden bg-[#181818] text-[#cccccc] font-sans select-none"
+      className="flex flex-col h-screen w-screen overflow-hidden bg-[#18181b] text-gray-200"
     >
-      {/* 1. Top Window / Menu / Title Bar */}
-      <TitleBar
-        workspaceInfo={workspaceInfo}
-        onOpenCommandPalette={handleOpenCommandPalette}
-        onOpenFolder={handleOpenFolder}
-        onNewFile={() => {
-          const name = prompt('Masukkan nama file baru:');
-          if (name) handleCreateItem(name, 'file');
-        }}
-        onNewFolder={() => {
-          const name = prompt('Masukkan nama folder baru:');
-          if (name) handleCreateItem(name, 'directory');
-        }}
-        onSaveFile={handleSaveFile}
-        onRunCode={handleRunCode}
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        isTerminalOpen={isTerminalOpen}
-        onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
-        editorSettings={editorSettings}
-        setEditorSettings={setEditorSettings}
-        activeView={activeView}
-        setActiveView={setActiveView}
-      />
-
-      {/* 2. Main Workspace Body Container */}
+      {/* Top Main Workspace Container */}
       <div className="flex flex-1 overflow-hidden">
         {/* Leftmost Activity Bar */}
         <ActivityBar
           activeView={activeView}
           setActiveView={setActiveView}
-          isSidebarOpen={isSidebarOpen}
-          setIsSidebarOpen={setIsSidebarOpen}
+          isTerminalOpen={isTerminalOpen}
+          setIsTerminalOpen={setIsTerminalOpen}
+          onRunCode={handleRunCode}
+          isRunning={isRunning}
         />
 
-        {/* Sidebar / Multi-View Panels */}
-        {isSidebarOpen && (
-          <Sidebar
-            activeView={activeView}
-            tree={tree}
-            activeTabPath={activeTabPath}
-            activeFile={activeTab}
-            workspaceInfo={workspaceInfo}
-            onOpenFolder={handleOpenFolder}
-            onOpenFile={handleOpenFile}
-            onRefresh={fetchTree}
-            onCreateItem={handleCreateItem}
-            onDeleteItem={handleDeleteItem}
-            onRenameItem={handleRenameItem}
-            onMoveItem={handleMoveItem}
-            editorSettings={editorSettings}
-            setEditorSettings={setEditorSettings}
-            onNavigateLine={(line) => editorAreaRef.current?.revealLine(line)}
-            onRunCode={handleRunCode}
-            isRunning={isRunning}
-          />
-        )}
+        {/* Sidebar / Tree View */}
+        <Sidebar
+          activeView={activeView}
+          tree={tree}
+          activeTabPath={activeTabPath}
+          workspaceInfo={workspaceInfo}
+          onOpenFolder={handleOpenFolder}
+          onOpenFile={handleOpenFile}
+          onRefresh={fetchTree}
+          onCreateItem={handleCreateItem}
+          onDeleteItem={handleDeleteItem}
+          onRenameItem={handleRenameItem}
+          onMoveItem={handleMoveItem}
+          editorSettings={editorSettings}
+          setEditorSettings={setEditorSettings}
+        />
 
         {/* Center & Right: Editor Area + Integrated Terminal */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           <EditorArea
-            ref={editorAreaRef}
             tabs={tabs}
             activeTabPath={activeTabPath}
             workspaceInfo={workspaceInfo}
@@ -540,11 +478,10 @@ export default function App() {
             onRunCode={handleRunCode}
             isRunning={isRunning}
             editorSettings={editorSettings}
-            cursorPosition={cursorPosition}
             onCursorChange={(line, col) => setCursorPosition({ line, col })}
           />
 
-          {/* Bottom Integrated Terminal Panel */}
+          {/* Bottom Integrated Terminal */}
           <TerminalPanel
             isOpen={isTerminalOpen}
             onClose={() => setIsTerminalOpen(false)}
@@ -552,48 +489,18 @@ export default function App() {
             onClear={() => setTerminalOutput('')}
             isRunning={isRunning}
             onRunCustomCommand={handleRunCustomCommand}
+            onStopProcess={handleStopProcess}
           />
         </div>
       </div>
 
-      {/* 3. Bottom Status Bar */}
+      {/* Bottom Status Bar */}
       <StatusBar
         activeFile={activeTab}
         cursorPosition={cursorPosition}
         serverStatus={serverStatus}
         tabSize={editorSettings.tabSize}
         saveStatus={saveStatus}
-        onOpenLanguageSelect={() => handleOpenCommandPalette('commands')}
-      />
-
-      {/* 4. Quick Open & Command Palette Modal Overlay */}
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-        initialMode={commandPaletteMode}
-        tree={tree}
-        onOpenFile={handleOpenFile}
-        onOpenFolder={handleOpenFolder}
-        onNewFile={() => {
-          const name = prompt('Masukkan nama file baru:');
-          if (name) handleCreateItem(name, 'file');
-        }}
-        onNewFolder={() => {
-          const name = prompt('Masukkan nama folder baru:');
-          if (name) handleCreateItem(name, 'directory');
-        }}
-        onSaveFile={handleSaveFile}
-        onRunCode={handleRunCode}
-        onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        onToggleMinimap={() => setEditorSettings((s) => ({ ...s, minimap: !s.minimap }))}
-        onToggleWordWrap={() => setEditorSettings((s) => ({ ...s, wordWrap: s.wordWrap === 'on' ? 'off' : 'on' }))}
-        onSelectView={(v) => {
-          setActiveView(v);
-          setIsSidebarOpen(true);
-        }}
-        editorSettings={editorSettings}
-        setEditorSettings={setEditorSettings}
       />
     </div>
   );
