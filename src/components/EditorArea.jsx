@@ -621,7 +621,7 @@ export default function EditorArea({
               <img 
                 src="/banner.png" 
                 alt="Nemesis IDE" 
-                className="w-72 h-auto object-contain rounded-xl drop-shadow-[0_10px_25px_rgba(168,85,247,0.25)]" 
+                className="w-80 h-auto object-contain rounded-xl drop-shadow-[0_12px_28px_rgba(0,0,0,0.5)] border border-amber-500/20" 
               />
             </div>
             <p 

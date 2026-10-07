@@ -535,7 +535,7 @@ export default function App() {
       >
         {/* Left: Brand Emblem & Workspace */}
         <div className="flex items-center space-x-2" style={{ WebkitAppRegion: 'no-drag' }}>
-          <div className="w-4 h-4 rounded overflow-hidden flex items-center justify-center bg-[#040b1b] border border-purple-500/30">
+          <div className="w-4 h-4 rounded overflow-hidden flex items-center justify-center bg-[#040b1b] border border-amber-500/40 shadow-sm shadow-amber-900/20">
             <img src="/emblem.png" alt="Nemesis IDE" className="w-full h-full object-contain" />
           </div>
           <span 

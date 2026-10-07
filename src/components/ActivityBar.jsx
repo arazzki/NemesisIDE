@@ -22,7 +22,7 @@ export default function ActivityBar({
       className="w-12 border-r flex flex-col items-center py-3 select-none z-20 transition-colors"
     >
       {/* Brand Icon */}
-      <div className="w-8 h-8 rounded-lg overflow-hidden border border-purple-500/40 mb-6 shadow-md shadow-purple-500/20 bg-[#040b1b] flex items-center justify-center">
+      <div className="w-8 h-8 rounded-lg overflow-hidden border border-amber-500/40 mb-6 shadow-md shadow-amber-500/20 bg-[#040b1b] flex items-center justify-center">
         <img src="/emblem.png" alt="Nemesis IDE" className="w-full h-full object-cover" />
       </div>
 

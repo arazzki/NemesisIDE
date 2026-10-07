@@ -412,7 +412,7 @@ export default function Sidebar({
             }} 
             className="flex items-center space-x-2.5 mb-4 p-2.5 rounded-lg border shadow-sm"
           >
-            <img src="/emblem.png" alt="Nemesis Logo" className="w-9 h-9 rounded-md object-cover border border-purple-500/40 bg-[#040b1b]" />
+            <img src="/emblem.png" alt="Nemesis Logo" className="w-9 h-9 rounded-md object-cover border border-amber-500/40 bg-[#040b1b]" />
             <div>
               <h2 style={{ color: theme.sidebar.inputText }} className="text-sm font-bold leading-tight">Nemesis IDE</h2>
               <span className="text-[10px] text-blue-500 font-mono">v0.1.0 Desktop</span>
