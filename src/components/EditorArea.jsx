@@ -243,6 +243,13 @@ export default function EditorArea({
     registerAllSnippets(monaco);
   };
 
+  // Always keep latest refs to avoid stale closures in Monaco addCommand
+  const handleSaveRef = useRef();
+  handleSaveRef.current = handleSave;
+
+  const handleFormatDocumentRef = useRef();
+  handleFormatDocumentRef.current = handleFormatDocument;
+
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
 
@@ -255,14 +262,18 @@ export default function EditorArea({
 
     // Add Ctrl+S / Cmd+S save shortcut (with auto-formatting)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      handleSave();
+      if (handleSaveRef.current) {
+        handleSaveRef.current();
+      }
     });
 
     // Add Shift+Alt+F format shortcut
     editor.addCommand(
       monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF,
       () => {
-        handleFormatDocument();
+        if (handleFormatDocumentRef.current) {
+          handleFormatDocumentRef.current();
+        }
       }
     );
   };

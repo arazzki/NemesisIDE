@@ -24,7 +24,7 @@ export default function App() {
   const [editorSettings, setEditorSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('nemesis_editor_settings');
-      if (saved) return JSON.parse(saved);
+      if (saved) return { autoSave: true, formatOnSave: true, ...JSON.parse(saved) };
     } catch (e) {}
     return {
       theme: 'nemesis-dark',
@@ -32,7 +32,8 @@ export default function App() {
       tabSize: 2,
       wordWrap: 'on',
       minimap: true,
-      formatOnSave: true
+      formatOnSave: true,
+      autoSave: true
     };
   });
 
@@ -167,18 +168,6 @@ export default function App() {
     });
   }, [fetchTree, fetchWorkspaceInfo]);
 
-  // Global keyboard shortcuts (Ctrl+O to open folder)
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
-        e.preventDefault();
-        handleOpenFolder();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   // Global drag-and-drop: drop a folder from Windows Desktop into the IDE
   const handleGlobalDrop = (e) => {
     e.preventDefault();
@@ -234,7 +223,8 @@ export default function App() {
 
   // Save current active file
   const handleSaveFile = async (path = activeTabPath, contentOverride = null) => {
-    const tab = tabs.find((t) => t.path === path);
+    const targetPath = path || activeTabPath;
+    const tab = tabs.find((t) => t.path === targetPath);
     if (!tab) return;
     const finalContent = contentOverride !== null ? contentOverride : tab.content;
 
@@ -247,10 +237,10 @@ export default function App() {
       const data = await res.json();
       if (data.success) {
         setTabs((prev) =>
-          prev.map((t) => (t.path === path ? { ...t, content: finalContent, originalContent: finalContent, isDirty: false } : t))
+          prev.map((t) => (t.path === targetPath ? { ...t, content: finalContent, originalContent: finalContent, isDirty: false } : t))
         );
         setSaveStatus(`Tersimpan: ${tab.name}`);
-        setTimeout(() => setSaveStatus(''), 3000);
+        setTimeout(() => setSaveStatus(''), 2500);
       } else {
         alert(`Gagal menyimpan file: ${data.error}`);
       }
@@ -259,6 +249,76 @@ export default function App() {
       alert('Koneksi terputus saat menyimpan file.');
     }
   };
+
+  // Save ALL dirty tabs at once (Crucial for multi-file projects like Java/C++/C)
+  const handleSaveAllDirty = async () => {
+    const dirtyTabs = tabs.filter((t) => t.isDirty);
+    if (dirtyTabs.length === 0) return;
+
+    await Promise.all(
+      dirtyTabs.map(async (tab) => {
+        try {
+          await fetch('/api/file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: tab.path, content: tab.content })
+          });
+        } catch (err) {
+          console.error('Failed to auto-save tab:', tab.path, err);
+        }
+      })
+    );
+
+    setTabs((prev) =>
+      prev.map((t) => ({ ...t, originalContent: t.content, isDirty: false }))
+    );
+  };
+
+  // Keep latest references for global shortcut handlers
+  const handleSaveFileRef = useRef();
+  handleSaveFileRef.current = handleSaveFile;
+  const handleSaveAllDirtyRef = useRef();
+  handleSaveAllDirtyRef.current = handleSaveAllDirty;
+  const handleOpenFolderRef = useRef();
+  handleOpenFolderRef.current = handleOpenFolder;
+
+  // Global keyboard shortcuts (Ctrl+S to save, Ctrl+Shift+S save all, Ctrl+O to open folder)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+      if (isCmdOrCtrl && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (handleSaveAllDirtyRef.current) {
+          handleSaveAllDirtyRef.current();
+        }
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (handleSaveFileRef.current) {
+          handleSaveFileRef.current();
+        }
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        if (handleOpenFolderRef.current) {
+          handleOpenFolderRef.current();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Debounced Auto-Save: Automatically saves active file ~1000ms after user stops typing
+  useEffect(() => {
+    if (!editorSettings.autoSave) return;
+    const currentTab = tabs.find((t) => t.path === activeTabPath);
+    if (!currentTab || !currentTab.isDirty) return;
+
+    const timer = setTimeout(() => {
+      handleSaveFile(currentTab.path);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [tabs, activeTabPath, editorSettings.autoSave]);
 
   // File Operations: Create
   const handleCreateItem = async (relPath, type) => {
@@ -437,11 +497,8 @@ export default function App() {
   const handleRunCode = async () => {
     if (!activeTabPath || isRunning) return;
 
-    // Save first before running if dirty
-    const currentTab = tabs.find((t) => t.path === activeTabPath);
-    if (currentTab?.isDirty) {
-      await handleSaveFile(activeTabPath);
-    }
+    // Automatically save ALL dirty tabs before compilation/running (so multi-file Java/C++ works!)
+    await handleSaveAllDirty();
 
     executeProcess(`/api/run?path=${encodeURIComponent(activeTabPath)}`);
   };

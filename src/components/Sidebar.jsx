@@ -547,6 +547,18 @@ export default function Sidebar({
               <span>Format Dokumen on Save</span>
             </label>
           </div>
+
+          <div>
+            <label style={{ color: theme.sidebar.text }} className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={editorSettings.autoSave ?? true}
+                onChange={(e) => setEditorSettings({ ...editorSettings, autoSave: e.target.checked })}
+                className="accent-blue-500 rounded"
+              />
+              <span>Auto Save (Simpan Otomatis saat mengetik)</span>
+            </label>
+          </div>
         </div>
       </div>
     );
