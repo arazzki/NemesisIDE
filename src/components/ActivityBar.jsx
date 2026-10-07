@@ -1,82 +1,160 @@
-import React from 'react';
-import { Files, Terminal, Settings, Code2, Play, Info } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Files, Search, GitBranch, Bug, Blocks, 
+  Settings, User, Check
+} from 'lucide-react';
 
-export default function ActivityBar({ activeView, setActiveView, isTerminalOpen, setIsTerminalOpen, onRunCode, isRunning }) {
+export default function ActivityBar({ 
+  activeView, 
+  setActiveView, 
+  isSidebarOpen, 
+  setIsSidebarOpen,
+  gitChangesCount = 0
+}) {
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const settingsMenuRef = useRef(null);
+
+  // Close settings popup on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target)) {
+        setShowSettingsMenu(false);
+      }
+    };
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleNavClick = (viewId) => {
+    if (activeView === viewId && isSidebarOpen) {
+      setIsSidebarOpen(false);
+    } else {
+      setActiveView(viewId);
+      setIsSidebarOpen(true);
+    }
+  };
+
+  const topItems = [
+    { id: 'explorer', label: 'Explorer (Ctrl+Shift+E)', icon: Files },
+    { id: 'search', label: 'Search (Ctrl+Shift+F)', icon: Search },
+    { 
+      id: 'source-control', 
+      label: 'Source Control (Ctrl+Shift+G)', 
+      icon: GitBranch,
+      badge: gitChangesCount > 0 ? gitChangesCount : null
+    },
+    { id: 'run-debug', label: 'Run and Debug (Ctrl+Shift+D)', icon: Bug },
+    { id: 'extensions', label: 'Extensions (Ctrl+Shift+X)', icon: Blocks },
+  ];
+
   return (
-    <aside className="w-12 bg-[#141416] border-r border-[#27272a] flex flex-col items-center py-3 select-none z-20">
-      {/* Brand Icon */}
-      <div className="w-8 h-8 rounded-lg overflow-hidden border border-purple-500/40 mb-6 shadow-md shadow-purple-500/20 bg-[#040b1b] flex items-center justify-center">
-        <img src="/emblem.png" alt="Nemesis IDE" className="w-full h-full object-cover" />
-      </div>
-
+    <aside className="w-[48px] min-w-[48px] bg-[#181818] border-r border-[#2b2b2b] flex flex-col items-center py-2 select-none z-20 shrink-0">
       {/* Top Nav Items */}
-      <div className="flex flex-col space-y-4">
-        <button
-          onClick={() => setActiveView('explorer')}
-          title="Explorer (Files)"
-          className={`p-2 rounded-lg transition-colors relative ${
-            activeView === 'explorer'
-              ? 'text-white bg-[#27272a]'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#202023]'
-          }`}
-        >
-          {activeView === 'explorer' && (
-            <div className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-blue-500 rounded-r" />
-          )}
-          <Files size={20} />
-        </button>
+      <div className="flex flex-col space-y-1 w-full items-center">
+        {topItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeView === item.id && isSidebarOpen;
 
-        <button
-          onClick={() => setIsTerminalOpen(!isTerminalOpen)}
-          title="Toggle Integrated Terminal"
-          className={`p-2 rounded-lg transition-colors relative ${
-            isTerminalOpen
-              ? 'text-blue-400 bg-[#27272a]'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#202023]'
-          }`}
-        >
-          <Terminal size={20} />
-        </button>
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleNavClick(item.id)}
+              title={item.label}
+              className={`w-full h-11 flex items-center justify-center relative transition-colors ${
+                isActive
+                  ? 'text-white'
+                  : 'text-[#858585] hover:text-white'
+              }`}
+            >
+              {/* VS Code Active Left Indicator Bar */}
+              {isActive && (
+                <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white rounded-r-sm" />
+              )}
+              
+              <Icon size={22} strokeWidth={1.5} />
 
-        <button
-          onClick={onRunCode}
-          disabled={isRunning}
-          title="Run Current File"
-          className={`p-2 rounded-lg transition-all ${
-            isRunning
-              ? 'text-zinc-600 animate-pulse'
-              : 'text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300'
-          }`}
-        >
-          <Play size={20} className={isRunning ? 'fill-zinc-600' : 'fill-emerald-400'} />
-        </button>
+              {/* Badge for Git or Notifications */}
+              {item.badge && (
+                <span className="absolute bottom-1.5 right-2 min-w-[14px] h-[14px] bg-[#007acc] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Bottom Nav Items */}
-      <div className="mt-auto flex flex-col space-y-3">
+      {/* Bottom Nav Items: Profile and Settings */}
+      <div className="mt-auto flex flex-col space-y-1 w-full items-center relative" ref={settingsMenuRef}>
+        {/* Profile / Accounts */}
         <button
-          onClick={() => setActiveView('about')}
-          title="About Custom IDE"
-          className={`p-2 rounded-lg transition-colors ${
-            activeView === 'about'
-              ? 'text-white bg-[#27272a]'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#202023]'
+          onClick={() => handleNavClick('about')}
+          title="Accounts / Profile"
+          className={`w-full h-11 flex items-center justify-center relative transition-colors ${
+            activeView === 'about' && isSidebarOpen
+              ? 'text-white'
+              : 'text-[#858585] hover:text-white'
           }`}
         >
-          <Info size={19} />
+          {activeView === 'about' && isSidebarOpen && (
+            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white rounded-r-sm" />
+          )}
+          <User size={21} strokeWidth={1.5} />
         </button>
 
+        {/* Settings Gear */}
         <button
-          onClick={() => setActiveView('settings')}
-          title="Settings"
-          className={`p-2 rounded-lg transition-colors ${
-            activeView === 'settings'
-              ? 'text-white bg-[#27272a]'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#202023]'
+          onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+          title="Manage / Settings"
+          className={`w-full h-11 flex items-center justify-center relative transition-colors ${
+            (showSettingsMenu || (activeView === 'settings' && isSidebarOpen))
+              ? 'text-white'
+              : 'text-[#858585] hover:text-white'
           }`}
         >
-          <Settings size={19} />
+          {activeView === 'settings' && isSidebarOpen && (
+            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white rounded-r-sm" />
+          )}
+          <Settings size={21} strokeWidth={1.5} />
         </button>
+
+        {/* Settings Popup Menu */}
+        {showSettingsMenu && (
+          <div className="absolute left-full bottom-2 ml-1 w-52 bg-[#1f1f1f] border border-[#454545] rounded-md shadow-2xl py-1 z-50 text-xs">
+            <button
+              onClick={() => {
+                setShowSettingsMenu(false);
+                setActiveView('settings');
+                setIsSidebarOpen(true);
+              }}
+              className="w-full text-left px-3 py-1.5 hover:bg-[#04395e] hover:text-white flex justify-between text-[#cccccc]"
+            >
+              <span>Settings</span>
+              <span className="text-[#858585] text-[11px]">Ctrl+,</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowSettingsMenu(false);
+                setActiveView('settings');
+                setIsSidebarOpen(true);
+              }}
+              className="w-full text-left px-3 py-1.5 hover:bg-[#04395e] hover:text-white text-[#cccccc]"
+            >
+              <span>Themes</span>
+            </button>
+            <div className="h-px bg-[#333333] my-1" />
+            <button
+              onClick={() => {
+                setShowSettingsMenu(false);
+                setActiveView('about');
+                setIsSidebarOpen(true);
+              }}
+              className="w-full text-left px-3 py-1.5 hover:bg-[#04395e] hover:text-white text-[#cccccc]"
+            >
+              <span>About Nemesis IDE</span>
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

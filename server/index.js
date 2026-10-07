@@ -323,7 +323,134 @@ app.post('/api/move', (req, res) => {
   }
 });
 
-// 7. Multi-Language Runner (Streaming via SSE)
+// 7. Search in workspace files
+app.get('/api/search', (req, res) => {
+  try {
+    const query = req.query.q;
+    if (!query || typeof query !== 'string' || query.trim() === '') {
+      return res.json({ success: true, results: [] });
+    }
+
+    const matchCase = req.query.matchCase === 'true';
+    const wholeWord = req.query.wholeWord === 'true';
+    const isRegex = req.query.isRegex === 'true';
+
+    let searchRegex;
+    try {
+      if (isRegex) {
+        searchRegex = new RegExp(query, matchCase ? 'g' : 'gi');
+      } else {
+        const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = wholeWord ? `\\b${escaped}\\b` : escaped;
+        searchRegex = new RegExp(pattern, matchCase ? 'g' : 'gi');
+      }
+    } catch (e) {
+      return res.status(400).json({ success: false, error: 'Invalid regular expression' });
+    }
+
+    const binaryExts = new Set(['png', 'jpg', 'jpeg', 'gif', 'ico', 'pdf', 'zip', 'tar', 'gz', 'exe', 'dll', 'class', 'bin', 'woff', 'woff2', 'ttf', 'eot', 'mp4', 'mp3']);
+    const results = [];
+    const maxResults = 200;
+    let matchCount = 0;
+
+    function searchDir(currentDir) {
+      if (matchCount >= maxResults) return;
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist' || entry.name === 'build' || entry.name === 'release') {
+          continue;
+        }
+
+        const fullPath = path.join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          searchDir(fullPath);
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name).slice(1).toLowerCase();
+          if (binaryExts.has(ext)) continue;
+
+          try {
+            const stat = fs.statSync(fullPath);
+            if (stat.size > 2 * 1024 * 1024) continue; // Skip files > 2MB
+
+            const content = fs.readFileSync(fullPath, 'utf8');
+            const lines = content.split(/\r?\n/);
+            const fileMatches = [];
+
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              if (searchRegex.test(line)) {
+                fileMatches.push({
+                  line: i + 1,
+                  text: line.length > 200 ? line.slice(0, 200) + '...' : line
+                });
+                matchCount++;
+                if (matchCount >= maxResults) break;
+              }
+              searchRegex.lastIndex = 0;
+            }
+
+            if (fileMatches.length > 0) {
+              const relPath = path.relative(WORKSPACE_DIR, fullPath).replace(/\\/g, '/');
+              results.push({
+                path: relPath,
+                name: entry.name,
+                matches: fileMatches
+              });
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    searchDir(WORKSPACE_DIR);
+    res.json({ success: true, results, totalMatches: matchCount });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 8. Git status endpoint
+app.get('/api/git/status', (req, res) => {
+  const child = spawn('git', ['status', '--porcelain', '-b'], {
+    cwd: WORKSPACE_DIR,
+    shell: process.platform === 'win32'
+  });
+
+  let out = '';
+  let err = '';
+  child.stdout.on('data', d => out += d);
+  child.stderr.on('data', d => err += d);
+
+  child.on('close', code => {
+    if (code !== 0) {
+      return res.json({ success: true, isGit: false, branch: '', files: [] });
+    }
+
+    const lines = out.split(/\r?\n/).filter(Boolean);
+    let branch = 'main';
+    const files = [];
+
+    for (const line of lines) {
+      if (line.startsWith('## ')) {
+        const branchMatch = line.slice(3).match(/^([^.\s]+)/);
+        if (branchMatch) branch = branchMatch[1];
+      } else if (line.length >= 3) {
+        const status = line.slice(0, 2).trim();
+        const filePath = line.slice(3).trim();
+        files.push({ status, path: filePath, name: path.basename(filePath) });
+      }
+    }
+
+    res.json({ success: true, isGit: true, branch, files });
+  });
+
+  child.on('error', () => {
+    res.json({ success: true, isGit: false, branch: '', files: [] });
+  });
+});
+
+// 9. Multi-Language Runner (Streaming via SSE)
 app.get('/api/run', (req, res) => {
   const filePathParam = req.query.path;
   const customCmd = req.query.cmd;
