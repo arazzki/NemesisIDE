@@ -6,6 +6,7 @@ import {
   CornerDownRight
 } from 'lucide-react';
 import { getFileBadgeColor } from '../utils/languageHelper';
+import { getTheme } from '../utils/themeHelper';
 
 function FileTreeItem({ 
   item, 
@@ -18,8 +19,10 @@ function FileTreeItem({
   onRename,
   onCreate,
   onMove,
-  onContextMenu
+  onContextMenu,
+  theme: userTheme
 }) {
+  const theme = userTheme || getTheme('nemesis-dark');
   const [isOpen, setIsOpen] = useState(true);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(item.name);
@@ -112,15 +115,18 @@ function FileTreeItem({
             onOpenFile(item.path);
           }
         }}
-        style={{ paddingLeft: `${level * 12 + 10}px` }}
+        style={{ 
+          paddingLeft: `${level * 12 + 10}px`,
+          color: isSelected ? undefined : theme.sidebar.text
+        }}
         className={`group flex items-center justify-between py-1.5 pr-2 text-sm cursor-pointer rounded transition-all ${
           isDragOver
             ? 'bg-blue-600/30 border border-dashed border-blue-400 text-blue-200'
             : isSelected
-            ? 'bg-blue-600/20 text-blue-200 border-l-2 border-blue-500'
+            ? theme.sidebar.itemActive
             : isFolderActive
-            ? 'bg-amber-500/10 text-amber-200 border-l-2 border-amber-400'
-            : 'text-zinc-300 hover:bg-[#27272a]/70 hover:text-white'
+            ? (theme.isLight ? 'bg-amber-100 text-amber-900 border-l-2 border-amber-500 font-medium' : 'bg-amber-500/10 text-amber-200 border-l-2 border-amber-400')
+            : `${theme.sidebar.itemHover}`
         }`}
       >
         <div className="flex items-center space-x-2 truncate flex-1 min-w-0 mr-1">
@@ -144,7 +150,12 @@ function FileTreeItem({
                   if (e.key === 'Escape') setIsRenaming(false);
                 }}
                 autoFocus
-                className="bg-[#18181b] border border-blue-500 rounded px-1.5 py-0.5 text-xs text-white outline-none w-28"
+                style={{
+                  backgroundColor: theme.sidebar.inputBg,
+                  borderColor: theme.sidebar.inputBorder,
+                  color: theme.sidebar.inputText
+                }}
+                className="border rounded px-1.5 py-0.5 text-xs outline-none w-28"
               />
               <button onClick={handleRenameSubmit} className="text-emerald-400 hover:text-emerald-300 p-0.5">
                 <Check size={13} />
@@ -242,7 +253,12 @@ function FileTreeItem({
                 }}
                 autoFocus
                 placeholder={inlineCreate.type === 'directory' ? 'nama-folder' : 'nama-file.ext'}
-                className="bg-[#18181b] border border-blue-500/80 rounded px-1.5 py-0.5 text-xs text-white outline-none flex-1 min-w-0"
+                style={{
+                  backgroundColor: theme.sidebar.inputBg,
+                  borderColor: theme.sidebar.inputBorder,
+                  color: theme.sidebar.inputText
+                }}
+                className="border rounded px-1.5 py-0.5 text-xs outline-none flex-1 min-w-0"
               />
               <button
                 onClick={handleInlineSubmit}
@@ -277,13 +293,17 @@ function FileTreeItem({
                 onCreate={onCreate}
                 onMove={onMove}
                 onContextMenu={onContextMenu}
+                theme={theme}
               />
             ))
           ) : (
             !inlineCreate && (
               <div
-                style={{ paddingLeft: `${(level + 1) * 12 + 10}px` }}
-                className="py-1 px-2 text-[11px] text-zinc-500 italic flex items-center justify-between group/empty"
+                style={{ 
+                  paddingLeft: `${(level + 1) * 12 + 10}px`,
+                  color: theme.sidebar.emptyText
+                }}
+                className="py-1 px-2 text-[11px] italic flex items-center justify-between group/empty"
               >
                 <span>(folder kosong)</span>
                 <button
@@ -318,8 +338,10 @@ export default function Sidebar({
   onRenameItem,
   onMoveItem,
   editorSettings,
-  setEditorSettings
+  setEditorSettings,
+  theme: userTheme
 }) {
+  const theme = userTheme || getTheme(editorSettings?.theme || 'nemesis-dark');
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [newPrompt, setNewPrompt] = useState(null); // { type: 'file' | 'directory', targetDir: string }
   const [itemNameInput, setItemNameInput] = useState('');
@@ -374,29 +396,49 @@ export default function Sidebar({
 
   if (activeView === 'about') {
     return (
-      <div className="w-64 bg-[#18181b] border-r border-[#27272a] p-4 flex flex-col justify-between select-none">
+      <div 
+        style={{ 
+          backgroundColor: theme.sidebar.bg, 
+          borderColor: theme.sidebar.border, 
+          color: theme.sidebar.text 
+        }} 
+        className="w-64 border-r p-4 flex flex-col justify-between select-none transition-colors"
+      >
         <div>
-          <div className="flex items-center space-x-2.5 mb-4 p-2.5 rounded-lg bg-[#202024] border border-[#2e2e33]">
+          <div 
+            style={{ 
+              backgroundColor: theme.sidebar.cardBg, 
+              borderColor: theme.sidebar.cardBorder 
+            }} 
+            className="flex items-center space-x-2.5 mb-4 p-2.5 rounded-lg border shadow-sm"
+          >
             <img src="/emblem.png" alt="Nemesis Logo" className="w-9 h-9 rounded-md object-cover border border-purple-500/40 bg-[#040b1b]" />
             <div>
-              <h2 className="text-sm font-bold text-white leading-tight">Nemesis IDE</h2>
-              <span className="text-[10px] text-blue-400 font-mono">v0.1.0 Desktop</span>
+              <h2 style={{ color: theme.sidebar.inputText }} className="text-sm font-bold leading-tight">Nemesis IDE</h2>
+              <span className="text-[10px] text-blue-500 font-mono">v0.1.0 Desktop</span>
             </div>
           </div>
-          <div className="bg-[#202024] p-3 rounded-lg border border-[#2e2e33] text-xs text-zinc-300 space-y-2 mb-4">
-            <p className="font-semibold text-blue-400">Arsitektur Nemesis IDE:</p>
-            <ul className="list-disc list-inside space-y-1 text-zinc-400">
-              <li><strong className="text-zinc-200">Editor:</strong> Monaco Engine (Multi-Language Highlight)</li>
-              <li><strong className="text-zinc-200">Frontend:</strong> React + Vite + Tailwind CSS</li>
-              <li><strong className="text-zinc-200">Backend:</strong> Node.js Express (File System & Process Runner)</li>
-              <li><strong className="text-zinc-200">Runtime:</strong> GCC MinGW, Python, Node.js, Java, Dart, PowerShell</li>
+          <div 
+            style={{ 
+              backgroundColor: theme.sidebar.cardBg, 
+              borderColor: theme.sidebar.cardBorder, 
+              color: theme.sidebar.text 
+            }} 
+            className="p-3 rounded-lg border text-xs space-y-2 mb-4 shadow-sm"
+          >
+            <p className="font-semibold text-blue-500">Arsitektur Nemesis IDE:</p>
+            <ul style={{ color: theme.sidebar.textMuted }} className="list-disc list-inside space-y-1">
+              <li><strong style={{ color: theme.sidebar.inputText }}>Editor:</strong> Monaco Engine (Multi-Language Highlight)</li>
+              <li><strong style={{ color: theme.sidebar.inputText }}>Frontend:</strong> React + Vite + Tailwind CSS</li>
+              <li><strong style={{ color: theme.sidebar.inputText }}>Backend:</strong> Node.js Express (File System & Process Runner)</li>
+              <li><strong style={{ color: theme.sidebar.inputText }}>Runtime:</strong> GCC MinGW, Python, Node.js, Java, Dart, PowerShell</li>
             </ul>
           </div>
-          <div className="text-xs text-zinc-400 leading-relaxed">
+          <div style={{ color: theme.sidebar.textMuted }} className="text-xs leading-relaxed">
             Dukung 80+ bahasa pemrograman dengan live streaming runner di panel terminal!
           </div>
         </div>
-        <div className="text-[11px] text-zinc-500 border-t border-[#27272a] pt-3">
+        <div style={{ color: theme.sidebar.textMuted, borderColor: theme.sidebar.border }} className="text-[11px] border-t pt-3">
           Status: Production Ready ⚡
         </div>
       </div>
@@ -405,29 +447,44 @@ export default function Sidebar({
 
   if (activeView === 'settings') {
     return (
-      <div className="w-64 bg-[#18181b] border-r border-[#27272a] p-4 select-none">
-        <h2 className="text-sm font-semibold tracking-wide text-zinc-200 uppercase mb-4">
+      <div 
+        style={{ 
+          backgroundColor: theme.sidebar.bg, 
+          borderColor: theme.sidebar.border, 
+          color: theme.sidebar.text 
+        }} 
+        className="w-64 border-r p-4 select-none transition-colors"
+      >
+        <h2 
+          style={{ color: theme.sidebar.headerText }} 
+          className="text-sm font-semibold tracking-wide uppercase mb-4"
+        >
           Pengaturan Editor
         </h2>
 
         <div className="space-y-4 text-xs">
           <div>
-            <label className="text-zinc-400 block mb-1.5 font-medium">Tema Warna Sintaks</label>
+            <label style={{ color: theme.sidebar.textMuted }} className="block mb-1.5 font-medium">Tema Warna Sintaks & UI</label>
             <select
               value={editorSettings.theme}
               onChange={(e) => setEditorSettings({ ...editorSettings, theme: e.target.value })}
-              className="w-full bg-[#202024] border border-[#2e2e33] rounded px-2.5 py-1.5 text-zinc-200 outline-none focus:border-blue-500"
+              style={{
+                backgroundColor: theme.sidebar.inputBg,
+                borderColor: theme.sidebar.inputBorder,
+                color: theme.sidebar.inputText
+              }}
+              className="w-full border rounded px-2.5 py-1.5 outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="nemesis-dark">Nemesis Dark (Vivid Colors)</option>
+              <option value="light">Light (Clean Modern)</option>
               <option value="tokyo-night">Tokyo Night (Cyber Neon)</option>
               <option value="vs-dark">Dark (VS Code Default)</option>
-              <option value="light">Light</option>
               <option value="hc-black">High Contrast</option>
             </select>
           </div>
 
           <div>
-            <label className="text-zinc-400 block mb-1.5 font-medium">Ukuran Font ({editorSettings.fontSize}px)</label>
+            <label style={{ color: theme.sidebar.textMuted }} className="block mb-1.5 font-medium">Ukuran Font ({editorSettings.fontSize}px)</label>
             <input
               type="range"
               min="11"
@@ -439,19 +496,24 @@ export default function Sidebar({
           </div>
 
           <div>
-            <label className="text-zinc-400 block mb-1.5 font-medium">Tab Size</label>
+            <label style={{ color: theme.sidebar.textMuted }} className="block mb-1.5 font-medium">Tab Size</label>
             <select
               value={editorSettings.tabSize}
               onChange={(e) => setEditorSettings({ ...editorSettings, tabSize: Number(e.target.value) })}
-              className="w-full bg-[#202024] border border-[#2e2e33] rounded px-2.5 py-1.5 text-zinc-200 outline-none focus:border-blue-500"
+              style={{
+                backgroundColor: theme.sidebar.inputBg,
+                borderColor: theme.sidebar.inputBorder,
+                color: theme.sidebar.inputText
+              }}
+              className="w-full border rounded px-2.5 py-1.5 outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value={2}>2 Spasi</option>
               <option value={4}>4 Spasi</option>
             </select>
           </div>
 
-          <div className="pt-2 border-t border-[#27272a]">
-            <label className="flex items-center space-x-2 text-zinc-300 cursor-pointer">
+          <div style={{ borderColor: theme.sidebar.border }} className="pt-2 border-t">
+            <label style={{ color: theme.sidebar.text }} className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={editorSettings.wordWrap === 'on'}
@@ -463,7 +525,7 @@ export default function Sidebar({
           </div>
 
           <div>
-            <label className="flex items-center space-x-2 text-zinc-300 cursor-pointer">
+            <label style={{ color: theme.sidebar.text }} className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={editorSettings.minimap}
@@ -479,12 +541,22 @@ export default function Sidebar({
   }
 
   return (
-    <div className="w-64 bg-[#18181b] border-r border-[#27272a] flex flex-col h-full select-none relative">
+    <div 
+      style={{ 
+        backgroundColor: theme.sidebar.bg, 
+        borderColor: theme.sidebar.border, 
+        color: theme.sidebar.text 
+      }} 
+      className="w-64 border-r flex flex-col h-full select-none relative transition-colors"
+    >
       {/* Workspace Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#27272a]">
+      <div 
+        style={{ borderColor: theme.sidebar.border }} 
+        className="flex items-center justify-between px-3 py-2.5 border-b"
+      >
         {selectedFolder ? (
           <div className="flex items-center space-x-1.5 min-w-0">
-            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">LOKASI:</span>
+            <span style={{ color: theme.sidebar.textMuted }} className="text-[10px] font-bold uppercase tracking-wider">LOKASI:</span>
             <div 
               className="flex items-center space-x-1 bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[11px] px-1.5 py-0.5 rounded truncate max-w-[105px]" 
               title={`Target Folder: /${selectedFolder} (Klik 'x' untuk batal)`}
@@ -507,7 +579,10 @@ export default function Sidebar({
             title={`Project: ${workspaceInfo?.path || 'Workspace'}\nKlik untuk ganti folder project (Ctrl+O)`}
           >
             <FolderOpen size={14} className="text-blue-400 shrink-0 group-hover/title:text-blue-300" />
-            <span className="text-xs font-bold tracking-wider uppercase text-zinc-300 group-hover/title:text-white truncate">
+            <span 
+              style={{ color: theme.sidebar.headerText }} 
+              className="text-xs font-bold tracking-wider uppercase truncate"
+            >
               {workspaceInfo?.name || 'WORKSPACE'}
             </span>
           </div>
@@ -517,7 +592,8 @@ export default function Sidebar({
           <button
             onClick={() => onOpenFolder && onOpenFolder()}
             title="Buka Folder Project (Desktop / PC) [Ctrl+O]"
-            className="p-1 hover:bg-[#27272a] text-zinc-400 hover:text-white rounded"
+            style={{ color: theme.isLight ? '#4b5563' : '#a1a1aa' }}
+            className="p-1 hover:bg-zinc-500/20 hover:text-white rounded transition-colors"
           >
             <FolderOpen size={14} />
           </button>
@@ -527,7 +603,8 @@ export default function Sidebar({
               setItemNameInput('');
             }}
             title={selectedFolder ? `File Baru di /${selectedFolder}` : 'File Baru di Root'}
-            className="p-1 hover:bg-[#27272a] text-zinc-400 hover:text-white rounded"
+            style={{ color: theme.isLight ? '#4b5563' : '#a1a1aa' }}
+            className="p-1 hover:bg-zinc-500/20 hover:text-white rounded transition-colors"
           >
             <FilePlus size={14} />
           </button>
@@ -537,14 +614,16 @@ export default function Sidebar({
               setItemNameInput('');
             }}
             title={selectedFolder ? `Folder Baru di /${selectedFolder}` : 'Folder Baru di Root'}
-            className="p-1 hover:bg-[#27272a] text-zinc-400 hover:text-white rounded"
+            style={{ color: theme.isLight ? '#4b5563' : '#a1a1aa' }}
+            className="p-1 hover:bg-zinc-500/20 hover:text-white rounded transition-colors"
           >
             <FolderPlus size={14} />
           </button>
           <button
             onClick={onRefresh}
             title="Refresh File Tree"
-            className="p-1 hover:bg-[#27272a] text-zinc-400 hover:text-white rounded"
+            style={{ color: theme.isLight ? '#4b5563' : '#a1a1aa' }}
+            className="p-1 hover:bg-zinc-500/20 hover:text-white rounded transition-colors"
           >
             <RefreshCw size={13} />
           </button>
@@ -553,15 +632,22 @@ export default function Sidebar({
 
       {/* Input Modal for New File / Folder */}
       {newPrompt && (
-        <form onSubmit={handleCreateSubmit} className="p-2 border-b border-[#27272a] bg-[#202024]">
+        <form 
+          onSubmit={handleCreateSubmit} 
+          style={{ 
+            backgroundColor: theme.sidebar.cardBg, 
+            borderColor: theme.sidebar.border 
+          }}
+          className="p-2 border-b transition-colors"
+        >
           <div className="flex items-center justify-between mb-1 text-[11px]">
-            <span className="text-zinc-300 font-medium truncate">
+            <span style={{ color: theme.sidebar.text }} className="font-medium truncate">
               Buat {newPrompt.type === 'directory' ? 'Folder' : 'File'} di: <span className="text-blue-400 font-mono">{newPrompt.targetDir ? `/${newPrompt.targetDir}` : 'Root'}</span>
             </span>
             <button
               type="button"
               onClick={() => setNewPrompt(null)}
-              className="text-zinc-500 hover:text-zinc-300 ml-1"
+              className="text-zinc-400 hover:text-zinc-200 ml-1"
             >
               <X size={12} />
             </button>
@@ -573,11 +659,16 @@ export default function Sidebar({
               placeholder={newPrompt.type === 'directory' ? 'components atau sub/folder' : 'index.js atau sub/index.js'}
               value={itemNameInput}
               onChange={(e) => setItemNameInput(e.target.value)}
-              className="flex-1 bg-[#18181b] border border-blue-500/70 rounded px-2 py-1 text-xs text-white outline-none"
+              style={{
+                backgroundColor: theme.sidebar.inputBg,
+                borderColor: theme.sidebar.inputBorder,
+                color: theme.sidebar.inputText
+              }}
+              className="flex-1 border rounded px-2 py-1 text-xs outline-none focus:border-blue-500"
             />
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-xs"
+              className="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium"
             >
               Buat
             </button>
@@ -609,8 +700,8 @@ export default function Sidebar({
         }`}
       >
         {tree.length === 0 ? (
-          <div className="text-center py-8 px-3 text-xs text-zinc-400 space-y-3">
-            <p className="text-zinc-500">Folder project ini kosong.</p>
+          <div className="text-center py-8 px-3 text-xs space-y-3" style={{ color: theme.sidebar.emptyText }}>
+            <p style={{ color: theme.sidebar.textMuted }}>Folder project ini kosong.</p>
             <div className="flex flex-col space-y-2">
               <button
                 onClick={() => {
@@ -624,7 +715,12 @@ export default function Sidebar({
               </button>
               <button
                 onClick={() => onOpenFolder && onOpenFolder()}
-                className="w-full bg-[#27272a] hover:bg-[#3f3f46] text-zinc-200 py-1.5 px-3 rounded flex items-center justify-center space-x-1.5 border border-[#3f3f46] transition-colors"
+                style={{
+                  backgroundColor: theme.sidebar.cardBg,
+                  borderColor: theme.sidebar.cardBorder,
+                  color: theme.sidebar.text
+                }}
+                className="w-full py-1.5 px-3 rounded flex items-center justify-center space-x-1.5 border transition-colors hover:opacity-90"
               >
                 <FolderOpen size={14} className="text-amber-400" />
                 <span>Buka Folder Lain (Desktop / PC)</span>
@@ -646,6 +742,7 @@ export default function Sidebar({
               onCreate={onCreateItem}
               onMove={onMoveItem}
               onContextMenu={openContextMenu}
+              theme={theme}
             />
           ))
         )}
@@ -655,8 +752,14 @@ export default function Sidebar({
       {contextMenu && (
         <div
           ref={contextMenuRef}
-          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
-          className="fixed bg-[#202024] border border-[#2e2e33] rounded-md shadow-2xl py-1 text-xs text-zinc-200 z-50 min-w-[160px] select-none"
+          style={{ 
+            top: `${contextMenu.y}px`, 
+            left: `${contextMenu.x}px`,
+            backgroundColor: theme.sidebar.contextMenuBg,
+            borderColor: theme.sidebar.contextMenuBorder,
+            color: theme.sidebar.text
+          }}
+          className="fixed border rounded-md shadow-2xl py-1 text-xs z-50 min-w-[160px] select-none"
         >
           {contextMenu.isRoot ? (
             <>
@@ -670,7 +773,7 @@ export default function Sidebar({
                 <FolderOpen size={13} className="text-amber-400" />
                 <span>Buka Folder Project...</span>
               </button>
-              <div className="border-t border-[#2e2e33] my-1" />
+              <div style={{ borderColor: theme.sidebar.border }} className="border-t my-1" />
               <button
                 onClick={() => {
                   setNewPrompt({ type: 'file', targetDir: '' });
@@ -693,7 +796,7 @@ export default function Sidebar({
                 <FolderPlus size={13} className="text-amber-400" />
                 <span>Folder Baru</span>
               </button>
-              <div className="border-t border-[#2e2e33] my-1" />
+              <div style={{ borderColor: theme.sidebar.border }} className="border-t my-1" />
               <button
                 onClick={() => {
                   onRefresh();
@@ -731,7 +834,7 @@ export default function Sidebar({
                 <FolderPlus size={13} className="text-amber-400" />
                 <span>Folder Baru di Sini</span>
               </button>
-              <div className="border-t border-[#2e2e33] my-1" />
+              <div style={{ borderColor: theme.sidebar.border }} className="border-t my-1" />
               <button
                 onClick={() => {
                   const newName = prompt('Nama baru:', contextMenu.item.name);
@@ -791,7 +894,7 @@ export default function Sidebar({
                 <Edit2 size={13} className="text-zinc-400" />
                 <span>Ubah Nama</span>
               </button>
-              <div className="border-t border-[#2e2e33] my-1" />
+              <div style={{ borderColor: theme.sidebar.border }} className="border-t my-1" />
               <button
                 onClick={() => {
                   if (confirm(`Yakin ingin menghapus file ${contextMenu.item.name}?`)) {

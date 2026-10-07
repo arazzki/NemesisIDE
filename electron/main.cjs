@@ -39,6 +39,16 @@ ipcMain.on('window:close', () => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close();
 });
 
+ipcMain.on('window:setTitleBarOverlay', (event, options) => {
+  if (mainWindow && !mainWindow.isDestroyed() && typeof mainWindow.setTitleBarOverlay === 'function') {
+    try {
+      mainWindow.setTitleBarOverlay(options);
+    } catch (err) {
+      console.warn('[Electron] Could not set titleBarOverlay:', err);
+    }
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 const DEV_URL = process.env.ELECTRON_DEV_URL || 'http://localhost:5173';
 const IS_DEV = process.env.NODE_ENV === 'development';

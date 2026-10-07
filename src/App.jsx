@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import EditorArea from './components/EditorArea';
 import TerminalPanel from './components/TerminalPanel';
 import StatusBar from './components/StatusBar';
+import { getTheme } from './utils/themeHelper';
 
 export default function App() {
   const [activeView, setActiveView] = useState('explorer');
@@ -20,13 +21,34 @@ export default function App() {
   
   const [cursorPosition, setCursorPosition] = useState({ line: 1, col: 1 });
   const [workspaceInfo, setWorkspaceInfo] = useState({ path: '', name: 'Workspace' });
-  const [editorSettings, setEditorSettings] = useState({
-    theme: 'nemesis-dark',
-    fontSize: 14,
-    tabSize: 2,
-    wordWrap: 'on',
-    minimap: true
+  const [editorSettings, setEditorSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nemesis_editor_settings');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      theme: 'nemesis-dark',
+      fontSize: 14,
+      tabSize: 2,
+      wordWrap: 'on',
+      minimap: true
+    };
   });
+
+  // Persist editor settings to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('nemesis_editor_settings', JSON.stringify(editorSettings));
+    } catch (e) {}
+  }, [editorSettings]);
+
+  // Synchronize native window controls (minimize/maximize/close) in Electron
+  useEffect(() => {
+    if (window.electronAPI && typeof window.electronAPI.setTitleBarOverlay === 'function') {
+      const currentTheme = getTheme(editorSettings.theme);
+      window.electronAPI.setTitleBarOverlay(currentTheme.titleBarOverlay);
+    }
+  }, [editorSettings.theme]);
 
   // Fetch current workspace info
   const fetchWorkspaceInfo = useCallback(async () => {
@@ -429,56 +451,85 @@ export default function App() {
   };
 
   const activeTab = tabs.find((t) => t.path === activeTabPath);
+  const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI);
+  const theme = getTheme(editorSettings.theme);
 
-    const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI);
-
-    return (
-      <div 
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleGlobalDrop}
-        className="flex flex-col h-screen w-screen overflow-hidden bg-[#18181b] text-gray-200"
+  return (
+    <div 
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleGlobalDrop}
+      style={{
+        backgroundColor: theme.app.bg,
+        color: theme.app.text
+      }}
+      className={`flex flex-col h-screen w-screen overflow-hidden transition-colors ${theme.isLight ? 'light' : ''}`}
+    >
+      {/* Sleek Custom App Header (Spotify / Antigravity Style) */}
+      <header 
+        style={{ 
+          WebkitAppRegion: 'drag',
+          backgroundColor: theme.header.bg,
+          borderColor: theme.header.border,
+          color: theme.header.text
+        }}
+        className="h-[32px] min-h-[32px] border-b flex items-center justify-between px-3 select-none text-xs shrink-0 z-30 transition-colors"
       >
-        {/* Sleek Custom App Header (Spotify / Antigravity Style) */}
-        <header 
-          style={{ WebkitAppRegion: 'drag' }}
-          className="h-[32px] min-h-[32px] bg-[#141416] border-b border-[#27272a] flex items-center justify-between px-3 select-none text-xs text-zinc-400 shrink-0 z-30"
+        {/* Left: Brand Emblem & Workspace */}
+        <div className="flex items-center space-x-2" style={{ WebkitAppRegion: 'no-drag' }}>
+          <div className="w-4 h-4 rounded overflow-hidden flex items-center justify-center bg-[#040b1b] border border-purple-500/30">
+            <img src="/emblem.png" alt="Nemesis IDE" className="w-full h-full object-contain" />
+          </div>
+          <span 
+            style={{ color: theme.header.brandText }}
+            className="font-bold text-[11px] tracking-wide"
+          >
+            Nemesis IDE
+          </span>
+          <span style={{ color: theme.header.border }}>/</span>
+          <button 
+            onClick={() => handleOpenFolder()}
+            title="Klik untuk membuka folder project (Ctrl + O)"
+            style={{
+              backgroundColor: theme.header.badgeBg,
+              borderColor: theme.header.badgeBorder,
+              color: theme.header.badgeText
+            }}
+            className={`flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors border ${theme.header.badgeHover}`}
+          >
+            <Folder size={11} className="text-amber-400" />
+            <span className="truncate max-w-[160px] font-medium">{workspaceInfo?.name || 'Workspace'}</span>
+          </button>
+        </div>
+
+        {/* Center: Window Title */}
+        <div 
+          style={{ color: theme.header.titleText }}
+          className="text-[11px] font-medium truncate max-w-sm hidden sm:block"
         >
-          {/* Left: Brand Emblem & Workspace */}
-          <div className="flex items-center space-x-2" style={{ WebkitAppRegion: 'no-drag' }}>
-            <div className="w-4 h-4 rounded overflow-hidden flex items-center justify-center bg-[#040b1b] border border-purple-500/30">
-              <img src="/emblem.png" alt="Nemesis IDE" className="w-full h-full object-contain" />
-            </div>
-            <span className="font-bold text-zinc-200 text-[11px] tracking-wide">Nemesis IDE</span>
-            <span className="text-zinc-600">/</span>
-            <button 
-              onClick={() => handleOpenFolder()}
-              title="Klik untuk membuka folder project (Ctrl + O)"
-              className="flex items-center space-x-1 text-zinc-300 hover:text-white bg-[#1e1e24] hover:bg-[#27272a] px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors border border-[#2e2e34]"
+          {workspaceInfo?.name ? `${workspaceInfo.name} — Nemesis IDE` : 'Nemesis IDE'}
+        </div>
+
+        {/* Right: Spacer for native titleBarOverlay controls in Electron, or subtle badge in browser */}
+        <div className="flex items-center space-x-1" style={{ WebkitAppRegion: 'no-drag' }}>
+          {isElectron ? (
+            <div className="w-[138px]" />
+          ) : (
+            <span 
+              style={{
+                backgroundColor: theme.header.webBadgeBg,
+                borderColor: theme.header.webBadgeBorder,
+                color: theme.header.webBadgeText
+              }}
+              className="text-[10px] px-1.5 py-0.5 rounded border"
             >
-              <Folder size={11} className="text-amber-400" />
-              <span className="truncate max-w-[160px] font-medium">{workspaceInfo?.name || 'Workspace'}</span>
-            </button>
-          </div>
+              Web Mode
+            </span>
+          )}
+        </div>
+      </header>
 
-          {/* Center: Window Title */}
-          <div className="text-[11px] font-medium text-zinc-400 truncate max-w-sm hidden sm:block">
-            {workspaceInfo?.name ? `${workspaceInfo.name} — Nemesis IDE` : 'Nemesis IDE'}
-          </div>
-
-          {/* Right: Spacer for native titleBarOverlay controls in Electron, or subtle badge in browser */}
-          <div className="flex items-center space-x-1" style={{ WebkitAppRegion: 'no-drag' }}>
-            {isElectron ? (
-              <div className="w-[138px]" />
-            ) : (
-              <span className="text-[10px] text-zinc-500 bg-[#1e1e24] px-1.5 py-0.5 rounded border border-[#27272a]">
-                Web Mode
-              </span>
-            )}
-          </div>
-        </header>
-
-        {/* Top Main Workspace Container */}
-        <div className="flex flex-1 overflow-hidden">
+      {/* Top Main Workspace Container */}
+      <div className="flex flex-1 overflow-hidden">
         {/* Leftmost Activity Bar */}
         <ActivityBar
           activeView={activeView}
@@ -487,6 +538,7 @@ export default function App() {
           setIsTerminalOpen={setIsTerminalOpen}
           onRunCode={handleRunCode}
           isRunning={isRunning}
+          theme={theme}
         />
 
         {/* Sidebar / Tree View */}
@@ -504,6 +556,7 @@ export default function App() {
           onMoveItem={handleMoveItem}
           editorSettings={editorSettings}
           setEditorSettings={setEditorSettings}
+          theme={theme}
         />
 
         {/* Center & Right: Editor Area + Integrated Terminal */}
@@ -521,6 +574,7 @@ export default function App() {
             isRunning={isRunning}
             editorSettings={editorSettings}
             onCursorChange={(line, col) => setCursorPosition({ line, col })}
+            theme={theme}
           />
 
           {/* Bottom Integrated Terminal */}
@@ -532,6 +586,7 @@ export default function App() {
             isRunning={isRunning}
             onRunCustomCommand={handleRunCustomCommand}
             onStopProcess={handleStopProcess}
+            theme={theme}
           />
         </div>
       </div>
@@ -543,6 +598,7 @@ export default function App() {
         serverStatus={serverStatus}
         tabSize={editorSettings.tabSize}
         saveStatus={saveStatus}
+        theme={theme}
       />
     </div>
   );

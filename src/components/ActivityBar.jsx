@@ -1,9 +1,26 @@
 import React from 'react';
-import { Files, Terminal, Settings, Code2, Play, Info } from 'lucide-react';
+import { Files, Terminal, Settings, Play, Info } from 'lucide-react';
+import { getTheme } from '../utils/themeHelper';
 
-export default function ActivityBar({ activeView, setActiveView, isTerminalOpen, setIsTerminalOpen, onRunCode, isRunning }) {
+export default function ActivityBar({ 
+  activeView, 
+  setActiveView, 
+  isTerminalOpen, 
+  setIsTerminalOpen, 
+  onRunCode, 
+  isRunning,
+  theme: userTheme
+}) {
+  const theme = userTheme || getTheme('nemesis-dark');
+
   return (
-    <aside className="w-12 bg-[#141416] border-r border-[#27272a] flex flex-col items-center py-3 select-none z-20">
+    <aside 
+      style={{ 
+        backgroundColor: theme.activityBar.bg, 
+        borderColor: theme.activityBar.border 
+      }}
+      className="w-12 border-r flex flex-col items-center py-3 select-none z-20 transition-colors"
+    >
       {/* Brand Icon */}
       <div className="w-8 h-8 rounded-lg overflow-hidden border border-purple-500/40 mb-6 shadow-md shadow-purple-500/20 bg-[#040b1b] flex items-center justify-center">
         <img src="/emblem.png" alt="Nemesis IDE" className="w-full h-full object-cover" />
@@ -14,14 +31,14 @@ export default function ActivityBar({ activeView, setActiveView, isTerminalOpen,
         <button
           onClick={() => setActiveView('explorer')}
           title="Explorer (Files)"
-          className={`p-2 rounded-lg transition-colors relative ${
-            activeView === 'explorer'
-              ? 'text-white bg-[#27272a]'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#202023]'
-          }`}
+          style={{
+            backgroundColor: activeView === 'explorer' ? theme.activityBar.activeBg : 'transparent',
+            color: activeView === 'explorer' ? theme.activityBar.activeText : theme.activityBar.inactiveText
+          }}
+          className={`p-2 rounded-lg transition-colors relative ${activeView !== 'explorer' ? theme.activityBar.hoverBg : ''}`}
         >
           {activeView === 'explorer' && (
-            <div className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-blue-500 rounded-r" />
+            <div className={`absolute left-0 top-1.5 bottom-1.5 w-0.5 ${theme.activityBar.indicatorBg} rounded-r`} />
           )}
           <Files size={20} />
         </button>
@@ -29,11 +46,11 @@ export default function ActivityBar({ activeView, setActiveView, isTerminalOpen,
         <button
           onClick={() => setIsTerminalOpen(!isTerminalOpen)}
           title="Toggle Integrated Terminal"
-          className={`p-2 rounded-lg transition-colors relative ${
-            isTerminalOpen
-              ? 'text-blue-400 bg-[#27272a]'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#202023]'
-          }`}
+          style={{
+            backgroundColor: isTerminalOpen ? theme.activityBar.activeBg : 'transparent',
+            color: isTerminalOpen ? (theme.isLight ? '#2563eb' : '#60a5fa') : theme.activityBar.inactiveText
+          }}
+          className={`p-2 rounded-lg transition-colors relative ${!isTerminalOpen ? theme.activityBar.hoverBg : ''}`}
         >
           <Terminal size={20} />
         </button>
@@ -44,11 +61,11 @@ export default function ActivityBar({ activeView, setActiveView, isTerminalOpen,
           title="Run Current File"
           className={`p-2 rounded-lg transition-all ${
             isRunning
-              ? 'text-zinc-600 animate-pulse'
-              : 'text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300'
+              ? 'text-zinc-500 animate-pulse'
+              : 'text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400'
           }`}
         >
-          <Play size={20} className={isRunning ? 'fill-zinc-600' : 'fill-emerald-400'} />
+          <Play size={20} className={isRunning ? 'fill-zinc-500' : 'fill-emerald-500'} />
         </button>
       </div>
 
@@ -57,11 +74,11 @@ export default function ActivityBar({ activeView, setActiveView, isTerminalOpen,
         <button
           onClick={() => setActiveView('about')}
           title="About Custom IDE"
-          className={`p-2 rounded-lg transition-colors ${
-            activeView === 'about'
-              ? 'text-white bg-[#27272a]'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#202023]'
-          }`}
+          style={{
+            backgroundColor: activeView === 'about' ? theme.activityBar.activeBg : 'transparent',
+            color: activeView === 'about' ? theme.activityBar.activeText : theme.activityBar.inactiveText
+          }}
+          className={`p-2 rounded-lg transition-colors ${activeView !== 'about' ? theme.activityBar.hoverBg : ''}`}
         >
           <Info size={19} />
         </button>
@@ -69,11 +86,11 @@ export default function ActivityBar({ activeView, setActiveView, isTerminalOpen,
         <button
           onClick={() => setActiveView('settings')}
           title="Settings"
-          className={`p-2 rounded-lg transition-colors ${
-            activeView === 'settings'
-              ? 'text-white bg-[#27272a]'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#202023]'
-          }`}
+          style={{
+            backgroundColor: activeView === 'settings' ? theme.activityBar.activeBg : 'transparent',
+            color: activeView === 'settings' ? theme.activityBar.activeText : theme.activityBar.inactiveText
+          }}
+          className={`p-2 rounded-lg transition-colors ${activeView !== 'settings' ? theme.activityBar.hoverBg : ''}`}
         >
           <Settings size={19} />
         </button>

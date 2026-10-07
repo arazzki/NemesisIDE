@@ -1,21 +1,31 @@
 import React from 'react';
-import { GitBranch, Radio, CheckCircle, AlertCircle } from 'lucide-react';
+import { GitBranch, CheckCircle } from 'lucide-react';
 import { getLanguageFromPath } from '../utils/languageHelper';
+import { getTheme } from '../utils/themeHelper';
 
 export default function StatusBar({
   activeFile,
   cursorPosition,
   serverStatus,
   tabSize = 2,
-  saveStatus
+  saveStatus,
+  theme: userTheme
 }) {
+  const theme = userTheme || getTheme('nemesis-dark');
   const currentLang = activeFile ? getLanguageFromPath(activeFile.path) : 'Plain Text';
 
   return (
-    <footer className="h-6 bg-[#18181b] border-t border-[#27272a] flex items-center justify-between px-3 text-[11px] text-zinc-400 select-none z-20">
+    <footer 
+      style={{ 
+        backgroundColor: theme.statusBar.bg, 
+        borderColor: theme.statusBar.border, 
+        color: theme.statusBar.text 
+      }}
+      className="h-6 border-t flex items-center justify-between px-3 text-[11px] select-none z-20 transition-colors"
+    >
       {/* Left info */}
       <div className="flex items-center space-x-4">
-        <div className="flex items-center space-x-1.5 text-blue-400 font-medium">
+        <div className={`flex items-center space-x-1.5 font-medium ${theme.statusBar.branchColor}`}>
           <GitBranch size={12} />
           <span>main</span>
         </div>
@@ -39,7 +49,7 @@ export default function StatusBar({
               Spaces: {tabSize}
             </div>
             <div>UTF-8</div>
-            <div className="capitalize text-zinc-300 font-medium">
+            <div className={`capitalize font-medium ${theme.statusBar.activeLangColor}`}>
               {currentLang}
             </div>
           </>
@@ -51,7 +61,7 @@ export default function StatusBar({
               serverStatus === 'connected' ? 'bg-emerald-500' : 'bg-red-500'
             }`}
           />
-          <span className="text-zinc-500 text-[10px]">
+          <span style={{ color: theme.statusBar.text }} className="text-[10px] opacity-80">
             {serverStatus === 'connected' ? 'Local Server' : 'Disconnected'}
           </span>
         </div>

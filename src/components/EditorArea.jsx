@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import { X, Play, Save, Code, FolderOpen } from 'lucide-react';
 import { getLanguageFromPath, getFileBadgeColor, getLanguageName } from '../utils/languageHelper';
 import { registerAllSnippets } from '../utils/snippets';
+import { getTheme } from '../utils/themeHelper';
 
 export default function EditorArea({
   tabs,
@@ -16,8 +17,10 @@ export default function EditorArea({
   onRunCode,
   isRunning,
   editorSettings,
-  onCursorChange
+  onCursorChange,
+  theme: userTheme
 }) {
+  const theme = userTheme || getTheme(editorSettings.theme);
   const activeTab = tabs.find((t) => t.path === activeTabPath);
   const editorRef = useRef(null);
 
@@ -90,6 +93,36 @@ export default function EditorArea({
       }
     });
 
+    // Theme 3: Light (Modern Crisp Light)
+    monaco.editor.defineTheme('light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'keyword', foreground: 'd73a49', fontStyle: 'bold' },
+        { token: 'keyword.control', foreground: 'd73a49', fontStyle: 'bold' },
+        { token: 'type', foreground: '6f42c1', fontStyle: 'bold' },
+        { token: 'class', foreground: '6f42c1', fontStyle: 'bold' },
+        { token: 'function', foreground: '005cc5', fontStyle: 'bold' },
+        { token: 'method', foreground: '005cc5' },
+        { token: 'string', foreground: '22863a' },
+        { token: 'number', foreground: '005cc5' },
+        { token: 'comment', foreground: '6a737d', fontStyle: 'italic' },
+        { token: 'variable', foreground: '24292e' },
+      ],
+      colors: {
+        'editor.background': '#ffffff',
+        'editor.foreground': '#24292e',
+        'editorCursor.foreground': '#0366d6',
+        'editor.lineHighlightBackground': '#f6f8fa',
+        'editorLineNumber.foreground': '#8c959f',
+        'editorLineNumber.activeForeground': '#24292e',
+        'editor.selectionBackground': '#b3d7ff',
+        'editor.inactiveSelectionBackground': '#e1e4e8',
+        'editorIndentGuide.background': '#d0d7de',
+        'editorIndentGuide.activeBackground': '#57606a',
+      }
+    });
+
     // Register all default code snippets (sout + tab, clg + tab, pr + tab, etc.)
     registerAllSnippets(monaco);
   };
@@ -111,9 +144,18 @@ export default function EditorArea({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#1e1e24] overflow-hidden">
+    <div 
+      style={{ backgroundColor: theme.editor.bg }} 
+      className="flex-1 flex flex-col h-full overflow-hidden transition-colors"
+    >
       {/* Tab Bar & Action Buttons Header */}
-      <div className="flex items-center justify-between bg-[#141416] border-b border-[#27272a] h-9 select-none">
+      <div 
+        style={{ 
+          backgroundColor: theme.tabBar.bg, 
+          borderColor: theme.tabBar.border 
+        }} 
+        className="flex items-center justify-between border-b h-9 select-none transition-colors"
+      >
         {/* Open Tabs */}
         <div className="flex items-center h-full overflow-x-auto no-scrollbar flex-1">
           {tabs.map((tab) => {
@@ -125,10 +167,14 @@ export default function EditorArea({
               <div
                 key={tab.path}
                 onClick={() => onSelectTab(tab.path)}
-                className={`group flex items-center h-full px-3 text-xs border-r border-[#27272a] cursor-pointer transition-colors max-w-xs ${
-                  isActive
-                    ? 'bg-[#1a1a1f] text-white border-t-2 border-t-blue-500 font-medium'
-                    : 'bg-[#141416] text-zinc-400 hover:bg-[#1b1b1e] hover:text-zinc-200'
+                style={{
+                  backgroundColor: isActive ? theme.tabBar.activeTabBg : theme.tabBar.inactiveTabBg,
+                  color: isActive ? theme.tabBar.activeTabText : theme.tabBar.inactiveTabText,
+                  borderTop: isActive ? `2px solid ${theme.tabBar.activeTabBorder}` : '2px solid transparent',
+                  borderRight: `1px solid ${theme.tabBar.border}`
+                }}
+                className={`group flex items-center h-full px-3 text-xs cursor-pointer transition-colors max-w-xs ${
+                  isActive ? 'font-medium' : theme.tabBar.inactiveTabHover
                 }`}
               >
                 <span className={`w-2 h-2 rounded-full mr-2 ${dotBg}`} />
@@ -144,7 +190,7 @@ export default function EditorArea({
                       e.stopPropagation();
                       onCloseTab(tab.path);
                     }}
-                    className={`p-0.5 rounded hover:bg-[#3f3f46] text-zinc-400 hover:text-white ${
+                    className={`p-0.5 rounded hover:bg-zinc-500/20 opacity-70 hover:opacity-100 ${
                       tab.isDirty ? 'hidden group-hover:block' : ''
                     }`}
                   >
@@ -158,8 +204,17 @@ export default function EditorArea({
 
         {/* Action Buttons (Save & Run) */}
         {activeTab && (
-          <div className="flex items-center space-x-2 px-3 border-l border-[#27272a] bg-[#141416] h-full">
-            <span className="text-[11px] text-zinc-400 font-mono hidden md:inline mr-1">
+          <div 
+            style={{ 
+              backgroundColor: theme.tabBar.actionAreaBg, 
+              borderLeft: `1px solid ${theme.tabBar.actionAreaBorder}` 
+            }} 
+            className="flex items-center space-x-2 px-3 h-full transition-colors"
+          >
+            <span 
+              style={{ color: theme.isLight ? '#4b5563' : '#a1a1aa' }} 
+              className="text-[11px] font-mono hidden md:inline mr-1"
+            >
               {getLanguageName(activeTab.path)}
             </span>
 
@@ -170,7 +225,7 @@ export default function EditorArea({
               className={`flex items-center space-x-1 px-2.5 py-1 rounded text-xs transition-colors ${
                 activeTab.isDirty
                   ? 'bg-blue-600/90 hover:bg-blue-600 text-white shadow-sm'
-                  : 'text-zinc-500 cursor-default'
+                  : 'text-zinc-500 cursor-default opacity-60'
               }`}
             >
               <Save size={13} />
@@ -230,7 +285,13 @@ export default function EditorArea({
           />
         ) : (
           /* Empty / Welcome State */
-          <div className="h-full flex flex-col items-center justify-center text-zinc-400 select-none p-6">
+          <div 
+            style={{ 
+              backgroundColor: theme.editor.emptyBg, 
+              color: theme.editor.emptyText 
+            }} 
+            className="h-full flex flex-col items-center justify-center select-none p-6 transition-colors"
+          >
             <div className="flex flex-col items-center mb-3">
               <img 
                 src="/banner.png" 
@@ -238,7 +299,10 @@ export default function EditorArea({
                 className="w-72 h-auto object-contain rounded-xl drop-shadow-[0_10px_25px_rgba(168,85,247,0.25)]" 
               />
             </div>
-            <p className="text-xs text-zinc-400 mb-5 text-center max-w-sm">
+            <p 
+              style={{ color: theme.editor.emptyMuted }} 
+              className="text-xs mb-5 text-center max-w-sm"
+            >
               Tarik & lepaskan (Drag & drop) folder dari Desktop ke sini, atau klik tombol di bawah untuk membuka project.
             </p>
 
@@ -251,26 +315,57 @@ export default function EditorArea({
               <kbd className="bg-white/20 text-blue-100 text-[10px] px-1.5 py-0.5 rounded font-mono ml-1.5">Ctrl+O</kbd>
             </button>
 
-            <div className="bg-[#18181b] border border-[#27272a] rounded-lg p-4 w-72 text-xs space-y-2.5">
-              <div className="flex justify-between items-center text-zinc-400">
+            <div 
+              style={{ 
+                backgroundColor: theme.editor.shortcutBadgeBg, 
+                borderColor: theme.editor.shortcutBadgeBorder 
+              }} 
+              className="border rounded-lg p-4 w-72 text-xs space-y-2.5 shadow-sm"
+            >
+              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
                 <span>Buka Folder Project</span>
-                <kbd className="bg-[#27272a] text-blue-300 px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl + O</kbd>
+                <kbd 
+                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#2563eb' : '#93c5fd' }} 
+                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+                >
+                  Ctrl + O
+                </kbd>
               </div>
-              <div className="flex justify-between items-center text-zinc-400">
+              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
                 <span>Code Snippet</span>
-                <kbd className="bg-[#27272a] text-blue-300 px-1.5 py-0.5 rounded text-[11px] font-mono">sout, clg, pr + Tab</kbd>
+                <kbd 
+                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#2563eb' : '#93c5fd' }} 
+                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+                >
+                  sout, clg, pr + Tab
+                </kbd>
               </div>
-              <div className="flex justify-between items-center text-zinc-400">
+              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
                 <span>Simpan File</span>
-                <kbd className="bg-[#27272a] text-zinc-200 px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl + S</kbd>
+                <kbd 
+                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#374151' : '#e4e4e7' }} 
+                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+                >
+                  Ctrl + S
+                </kbd>
               </div>
-              <div className="flex justify-between items-center text-zinc-400">
+              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
                 <span>Jalankan Script</span>
-                <kbd className="bg-[#27272a] text-zinc-200 px-1.5 py-0.5 rounded text-[11px] font-mono">Tombol Run</kbd>
+                <kbd 
+                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#374151' : '#e4e4e7' }} 
+                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+                >
+                  Tombol Run
+                </kbd>
               </div>
-              <div className="flex justify-between items-center text-zinc-400">
+              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
                 <span>Toggle Terminal</span>
-                <kbd className="bg-[#27272a] text-zinc-200 px-1.5 py-0.5 rounded text-[11px] font-mono">Panel Bawah</kbd>
+                <kbd 
+                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#374151' : '#e4e4e7' }} 
+                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+                >
+                  Panel Bawah
+                </kbd>
               </div>
             </div>
           </div>

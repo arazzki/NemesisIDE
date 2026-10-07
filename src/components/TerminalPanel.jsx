@@ -3,6 +3,7 @@ import {
   Terminal as TerminalIcon, Trash2, X, ChevronRight, CornerDownLeft, 
   Maximize2, Minimize2, Minus, ChevronUp, Square, Copy, Check 
 } from 'lucide-react';
+import { getTheme } from '../utils/themeHelper';
 
 export default function TerminalPanel({
   isOpen,
@@ -11,8 +12,10 @@ export default function TerminalPanel({
   onClear,
   isRunning,
   onRunCustomCommand,
-  onStopProcess
+  onStopProcess,
+  theme: userTheme
 }) {
+  const theme = userTheme || getTheme('nemesis-dark');
   const [cmdInput, setCmdInput] = useState('');
   const [panelHeight, setPanelHeight] = useState(230);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -144,8 +147,12 @@ export default function TerminalPanel({
 
   return (
     <div 
-      style={{ height: calculatedHeight }}
-      className={`bg-[#141416] border-t border-[#27272a] flex flex-col z-20 select-none transition-all duration-75 relative ${
+      style={{ 
+        height: calculatedHeight,
+        backgroundColor: theme.terminal.bg,
+        borderColor: theme.terminal.border
+      }}
+      className={`border-t flex flex-col z-20 select-none transition-all duration-75 relative ${
         isMaximized ? 'absolute inset-x-0 bottom-0 top-[36px] !h-auto' : ''
       }`}
     >
@@ -159,14 +166,20 @@ export default function TerminalPanel({
       )}
 
       {/* 2. Panel Header */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#18181b] border-b border-[#27272a] text-xs h-[34px] min-h-[34px]">
+      <div 
+        style={{ 
+          backgroundColor: theme.terminal.headerBg, 
+          borderColor: theme.terminal.headerBorder 
+        }}
+        className="flex items-center justify-between px-3 py-1.5 border-b text-xs h-[34px] min-h-[34px] transition-colors"
+      >
         {/* Left: Title & Status */}
         <div className="flex items-center space-x-2">
-          <TerminalIcon size={14} className="text-blue-400" />
-          <span className="font-semibold text-zinc-200">Terminal & Output</span>
+          <TerminalIcon size={14} style={{ color: theme.terminal.promptText }} />
+          <span style={{ color: theme.terminal.headerText }} className="font-semibold">Terminal & Output</span>
           {isRunning && (
-            <span className="flex items-center space-x-1.5 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full text-[10px] font-medium border border-emerald-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="flex items-center space-x-1.5 bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full text-[10px] font-medium border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>Menjalankan proses...</span>
             </span>
           )}
@@ -190,16 +203,16 @@ export default function TerminalPanel({
           <button
             onClick={handleCopyOutput}
             title={copied ? "Tersalin ke Clipboard!" : "Salin Seluruh Output"}
-            className="p-1 text-zinc-400 hover:text-white hover:bg-[#27272a] rounded transition-colors"
+            className={`p-1 rounded transition-colors ${theme.terminal.buttonHover}`}
           >
-            {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+            {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
           </button>
 
           {/* Clear Output (Trash) */}
           <button
             onClick={onClear}
             title="Bersihkan Terminal (Hapus output / Ctrl+L)"
-            className="p-1 text-zinc-400 hover:text-white hover:bg-[#27272a] rounded transition-colors"
+            className={`p-1 rounded transition-colors ${theme.terminal.buttonHover}`}
           >
             <Trash2 size={13} />
           </button>
@@ -208,7 +221,7 @@ export default function TerminalPanel({
           <button
             onClick={handleToggleMaximize}
             title={isMaximized ? "Kembalikan Ukuran Semula (Restore)" : "Perbesar Penuh (Maximize)"}
-            className="p-1 text-zinc-400 hover:text-white hover:bg-[#27272a] rounded transition-colors"
+            className={`p-1 rounded transition-colors ${theme.terminal.buttonHover}`}
           >
             {isMaximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
           </button>
@@ -217,7 +230,7 @@ export default function TerminalPanel({
           <button
             onClick={handleToggleMinimize}
             title={isMinimized ? "Kembangkan Terminal" : "Kecilkan Terminal (Minimize)"}
-            className="p-1 text-zinc-400 hover:text-white hover:bg-[#27272a] rounded transition-colors"
+            className={`p-1 rounded transition-colors ${theme.terminal.buttonHover}`}
           >
             {isMinimized ? <ChevronUp size={13} /> : <Minus size={13} />}
           </button>
@@ -226,7 +239,7 @@ export default function TerminalPanel({
           <button
             onClick={onClose}
             title="Tutup Panel Terminal"
-            className="p-1 text-zinc-400 hover:text-white hover:bg-[#27272a] rounded transition-colors"
+            className={`p-1 rounded transition-colors ${theme.terminal.buttonHover}`}
           >
             <X size={13} />
           </button>
@@ -236,11 +249,17 @@ export default function TerminalPanel({
       {/* 3. Terminal Output Area (Hidden if minimized) */}
       {!isMinimized && (
         <>
-          <div className="flex-1 overflow-y-auto p-3 font-mono text-xs text-zinc-300 select-text whitespace-pre-wrap leading-relaxed bg-[#121214]">
+          <div 
+            style={{ 
+              backgroundColor: theme.terminal.outputBg, 
+              color: theme.terminal.outputText 
+            }}
+            className="flex-1 overflow-y-auto p-3 font-mono text-xs select-text whitespace-pre-wrap leading-relaxed transition-colors"
+          >
             {output ? (
               <div>{output}</div>
             ) : (
-              <div className="text-zinc-600 italic">
+              <div style={{ color: theme.isLight ? '#9ca3af' : '#71717a' }} className="italic">
                 Output proses akan muncul di sini. Klik "Run Code" atau ketik perintah di bawah (ketik 'clear' untuk hapus).
               </div>
             )}
@@ -250,28 +269,33 @@ export default function TerminalPanel({
           {/* 4. Command Prompt Input */}
           <form
             onSubmit={handleSubmit}
-            className="flex items-center px-3 py-1.5 bg-[#18181b] border-t border-[#27272a]"
+            style={{ 
+              backgroundColor: theme.terminal.inputBg, 
+              borderColor: theme.terminal.border 
+            }}
+            className="flex items-center px-3 py-1.5 border-t transition-colors"
           >
-            <ChevronRight size={14} className="text-blue-400 mr-2 shrink-0" />
+            <ChevronRight size={14} style={{ color: theme.terminal.promptText }} className="mr-2 shrink-0" />
             <input
               type="text"
               value={cmdInput}
               onChange={(e) => setCmdInput(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isRunning}
+              style={{ color: theme.terminal.inputText }}
               placeholder={
                 isRunning 
                   ? "Menunggu proses selesai... (Klik tombol 'Stop' di atas untuk membatalkan)" 
                   : "Ketik perintah (contoh: python main.py, dir, atau 'clear' untuk hapus output)..."
               }
-              className="flex-1 bg-transparent text-xs font-mono text-zinc-200 outline-none placeholder:text-zinc-600"
+              className="flex-1 bg-transparent text-xs font-mono outline-none placeholder:text-zinc-500 opacity-90"
             />
             {cmdInput && (
               <button
                 type="button"
                 onClick={() => setCmdInput('')}
                 title="Kosongkan input teks"
-                className="text-zinc-500 hover:text-zinc-300 mr-1 p-0.5"
+                className="text-zinc-400 hover:text-zinc-600 mr-1 p-0.5"
               >
                 <X size={12} />
               </button>
@@ -280,7 +304,7 @@ export default function TerminalPanel({
               type="submit"
               disabled={isRunning || !cmdInput.trim()}
               title="Kirim Perintah (Enter)"
-              className="p-1 text-zinc-400 hover:text-blue-400 disabled:opacity-40 transition-colors"
+              className="p-1 text-zinc-400 hover:text-blue-500 disabled:opacity-40 transition-colors"
             >
               <CornerDownLeft size={13} />
             </button>

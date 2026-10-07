@@ -33,3 +33,13 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #52525b;
 }
+
+/* Light mode adjustments */
+.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
