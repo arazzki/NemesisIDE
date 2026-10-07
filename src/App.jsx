@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Folder } from 'lucide-react';
 import ActivityBar from './components/ActivityBar';
 import Sidebar from './components/Sidebar';
 import EditorArea from './components/EditorArea';
@@ -429,14 +430,55 @@ export default function App() {
 
   const activeTab = tabs.find((t) => t.path === activeTabPath);
 
-  return (
-    <div 
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={handleGlobalDrop}
-      className="flex flex-col h-screen w-screen overflow-hidden bg-[#18181b] text-gray-200"
-    >
-      {/* Top Main Workspace Container */}
-      <div className="flex flex-1 overflow-hidden">
+    const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI);
+
+    return (
+      <div 
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleGlobalDrop}
+        className="flex flex-col h-screen w-screen overflow-hidden bg-[#18181b] text-gray-200"
+      >
+        {/* Sleek Custom App Header (Spotify / Antigravity Style) */}
+        <header 
+          style={{ WebkitAppRegion: 'drag' }}
+          className="h-[32px] min-h-[32px] bg-[#141416] border-b border-[#27272a] flex items-center justify-between px-3 select-none text-xs text-zinc-400 shrink-0 z-30"
+        >
+          {/* Left: Brand Emblem & Workspace */}
+          <div className="flex items-center space-x-2" style={{ WebkitAppRegion: 'no-drag' }}>
+            <div className="w-4 h-4 rounded overflow-hidden flex items-center justify-center bg-[#040b1b] border border-purple-500/30">
+              <img src="/emblem.png" alt="Nemesis IDE" className="w-full h-full object-contain" />
+            </div>
+            <span className="font-bold text-zinc-200 text-[11px] tracking-wide">Nemesis IDE</span>
+            <span className="text-zinc-600">/</span>
+            <button 
+              onClick={() => handleOpenFolder()}
+              title="Klik untuk membuka folder project (Ctrl + O)"
+              className="flex items-center space-x-1 text-zinc-300 hover:text-white bg-[#1e1e24] hover:bg-[#27272a] px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors border border-[#2e2e34]"
+            >
+              <Folder size={11} className="text-amber-400" />
+              <span className="truncate max-w-[160px] font-medium">{workspaceInfo?.name || 'Workspace'}</span>
+            </button>
+          </div>
+
+          {/* Center: Window Title */}
+          <div className="text-[11px] font-medium text-zinc-400 truncate max-w-sm hidden sm:block">
+            {workspaceInfo?.name ? `${workspaceInfo.name} — Nemesis IDE` : 'Nemesis IDE'}
+          </div>
+
+          {/* Right: Spacer for native titleBarOverlay controls in Electron, or subtle badge in browser */}
+          <div className="flex items-center space-x-1" style={{ WebkitAppRegion: 'no-drag' }}>
+            {isElectron ? (
+              <div className="w-[138px]" />
+            ) : (
+              <span className="text-[10px] text-zinc-500 bg-[#1e1e24] px-1.5 py-0.5 rounded border border-[#27272a]">
+                Web Mode
+              </span>
+            )}
+          </div>
+        </header>
+
+        {/* Top Main Workspace Container */}
+        <div className="flex flex-1 overflow-hidden">
         {/* Leftmost Activity Bar */}
         <ActivityBar
           activeView={activeView}

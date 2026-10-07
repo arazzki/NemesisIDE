@@ -21,6 +21,24 @@ ipcMain.handle('dialog:openDirectory', async () => {
   return result.filePaths[0];
 });
 
+ipcMain.on('window:minimize', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize();
+});
+
+ipcMain.on('window:maximize', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  }
+});
+
+ipcMain.on('window:close', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close();
+});
+
 const PORT = process.env.PORT || 3001;
 const DEV_URL = process.env.ELECTRON_DEV_URL || 'http://localhost:5173';
 const IS_DEV = process.env.NODE_ENV === 'development';
@@ -112,10 +130,16 @@ function createWindow() {
     height: 850,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: '#18181b',
+    backgroundColor: '#141416',
     title: 'Nemesis IDE',
     icon: iconPath,
     autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#141416',
+      symbolColor: '#a1a1aa',
+      height: 32
+    },
     show: false,
     webPreferences: {
       nodeIntegration: false,
