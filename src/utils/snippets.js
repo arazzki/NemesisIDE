@@ -707,8 +707,32 @@ export const languageSnippets = {
     {
       label: 'html5',
       detail: '<!DOCTYPE html>...',
-      insertText: '<!DOCTYPE html>\n<html lang="en">\n<head>\n\t<meta charset="UTF-8">\n\t<title>${1:Document}</title>\n</head>\n<body>\n\t${2}\n</body>\n</html>',
+      insertText: '<!DOCTYPE html>\n<html lang="en">\n<head>\n\t<meta charset="UTF-8">\n\t<meta name="viewport" content="width=device-width, initial-scale=1.0">\n\t<title>${1:Document}</title>\n</head>\n<body>\n\t${2}\n</body>\n</html>',
       documentation: 'HTML5 Boilerplate'
+    },
+    {
+      label: 'bs5',
+      detail: 'Bootstrap 5 Starter Template (CDN)',
+      insertText: '<!DOCTYPE html>\n<html lang="id">\n<head>\n\t<meta charset="UTF-8">\n\t<meta name="viewport" content="width=device-width, initial-scale=1.0">\n\t<title>${1:Bootstrap 5 Project}</title>\n\t<!-- Bootstrap 5 CSS -->\n\t<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">\n</head>\n<body>\n\t<div class="container py-5">\n\t\t<h1 class="text-primary mb-3">${2:Halo, Bootstrap 5!}</h1>\n\t\t<p class="lead text-muted">${3:Dibuat di Nemesis IDE}</p>\n\t\t<button class="btn btn-primary">${4:Tombol Contoh}</button>\n\t</div>\n\n\t<!-- Bootstrap 5 JS Bundle -->\n\t<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>\n</body>\n</html>',
+      documentation: 'Complete Bootstrap 5 Starter Template with CDN links'
+    },
+    {
+      label: 'bs5-card',
+      detail: 'Bootstrap 5 Card',
+      insertText: '<div class="card shadow-sm">\n\t<div class="card-body">\n\t\t<h5 class="card-title">${1:Card Title}</h5>\n\t\t<p class="card-text">${2:Isi deskripsi kartu...}</p>\n\t\t<a href="#" class="btn btn-primary">${3:Aksi}</a>\n\t</div>\n</div>',
+      documentation: 'Bootstrap 5 Card Component'
+    },
+    {
+      label: 'bs5-navbar',
+      detail: 'Bootstrap 5 Navbar',
+      insertText: '<nav class="navbar navbar-expand-lg bg-body-tertiary mb-4">\n\t<div class="container-fluid">\n\t\t<a class="navbar-brand" href="#">${1:Brand}</a>\n\t\t<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">\n\t\t\t<span class="navbar-toggler-icon"></span>\n\t\t</button>\n\t\t<div class="collapse navbar-collapse" id="navbarNav">\n\t\t\t<ul class="navbar-nav ms-auto">\n\t\t\t\t<li class="nav-item"><a class="nav-link active" href="#">Home</a></li>\n\t\t\t\t<li class="nav-item"><a class="nav-link" href="#">About</a></li>\n\t\t\t</ul>\n\t\t</div>\n\t</div>\n</nav>',
+      documentation: 'Bootstrap 5 Responsive Navbar'
+    },
+    {
+      label: 'bs5-btn',
+      detail: 'Bootstrap 5 Button',
+      insertText: '<button type="button" class="btn btn-${1:primary}">${2:Tombol}</button>',
+      documentation: 'Bootstrap 5 Button'
     },
     {
       label: 'div',

@@ -569,6 +569,18 @@ app.get('/api/run', (req, res) => {
     } else if (ext === '.php') {
       command = 'php';
       args = [fileName];
+    } else if (ext === '.html' || ext === '.htm') {
+      sendEvent('stdout', `[Nemesis IDE] Membuka "${fileName}" di browser web default...\n`);
+      if (process.platform === 'win32') {
+        command = 'cmd.exe';
+        args = ['/c', `start "" "${fileName}"`];
+      } else if (process.platform === 'darwin') {
+        command = 'open';
+        args = [fileName];
+      } else {
+        command = 'xdg-open';
+        args = [fileName];
+      }
     } else {
       sendEvent('stderr', `Ekstensi "${ext}" belum memiliki konfigurasi runner otomatis.\nAnda dapat menjalankan perintah kustom lewat input terminal di bawah.\n`);
       sendEvent('exit', { code: 1 });
