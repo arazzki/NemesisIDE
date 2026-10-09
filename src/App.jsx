@@ -168,6 +168,123 @@ export default function App() {
     });
   }, [fetchTree, fetchWorkspaceInfo]);
 
+  // Always keep latest tabs ref for auto-reload listeners
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+
+  // Handle external file changes (e.g. edited in VS Code, Git, or external tool)
+  const handleReloadExternalFile = useCallback(async (filePath) => {
+    const normPath = (filePath || '').replace(/\\/g, '/');
+    const existingTab = tabsRef.current.find(
+      (t) => t.path === normPath || t.path.replace(/\\/g, '/') === normPath
+    );
+    if (!existingTab) return;
+
+    try {
+      const res = await fetch(`/api/file?path=${encodeURIComponent(normPath)}`);
+      const data = await res.json();
+      if (data.success) {
+        setTabs((prev) =>
+          prev.map((t) => {
+            const isMatch = t.path === normPath || t.path.replace(/\\/g, '/') === normPath;
+            if (!isMatch) return t;
+
+            // Only update if not dirty and content actually differs
+            if (!t.isDirty && t.content !== data.content) {
+              return {
+                ...t,
+                content: data.content,
+                originalContent: data.content,
+                isDirty: false
+              };
+            }
+            return t;
+          })
+        );
+
+        if (!existingTab.isDirty && existingTab.content !== data.content) {
+          setSaveStatus(`Diperbarui dari luar: ${existingTab.name}`);
+          setTimeout(() => setSaveStatus(''), 2500);
+        }
+      }
+    } catch (err) {
+      console.warn('[AutoReload] Gagal memuat file yang berubah:', err);
+    }
+  }, []);
+
+  // Real-time File Watcher via Server-Sent Events (SSE)
+  useEffect(() => {
+    let es = null;
+    let reconnectTimeout = null;
+
+    const connectSSE = () => {
+      es = new EventSource('/api/events');
+
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'file-changed') {
+            handleReloadExternalFile(data.path);
+          } else if (data.type === 'tree-changed' || data.type === 'file-deleted') {
+            fetchTree();
+          } else if (data.type === 'workspace-changed') {
+            fetchWorkspaceInfo();
+            fetchTree();
+          }
+        } catch (e) {
+          // ignore non-json messages (like ping)
+        }
+      };
+
+      es.onerror = () => {
+        es.close();
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = setTimeout(connectSSE, 3000);
+      };
+    };
+
+    connectSSE();
+
+    return () => {
+      clearTimeout(reconnectTimeout);
+      if (es) es.close();
+    };
+  }, [fetchTree, fetchWorkspaceInfo, handleReloadExternalFile]);
+
+  // Window Focus Auto-Reload: Sync with disk when switching back from VS Code/external apps
+  useEffect(() => {
+    const handleWindowFocus = async () => {
+      // 1. Refresh file tree in background
+      fetchTree();
+
+      // 2. Check all clean open tabs for disk modifications
+      const currentTabs = tabsRef.current;
+      const cleanTabs = currentTabs.filter((t) => !t.isDirty);
+      if (cleanTabs.length === 0) return;
+
+      for (const tab of cleanTabs) {
+        try {
+          const res = await fetch(`/api/file?path=${encodeURIComponent(tab.path)}`);
+          const data = await res.json();
+          if (data.success && data.content !== tab.originalContent) {
+            setTabs((prev) =>
+              prev.map((t) =>
+                t.path === tab.path && !t.isDirty
+                  ? { ...t, content: data.content, originalContent: data.content }
+                  : t
+              )
+            );
+            setSaveStatus(`Diperbarui dari disk: ${tab.name}`);
+            setTimeout(() => setSaveStatus(''), 2500);
+          }
+        } catch (e) {}
+      }
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    return () => window.removeEventListener('focus', handleWindowFocus);
+  }, [fetchTree]);
+
   // Global drag-and-drop: drop a folder from Windows Desktop into the IDE
   const handleGlobalDrop = (e) => {
     e.preventDefault();
@@ -301,6 +418,9 @@ export default function App() {
         if (handleOpenFolderRef.current) {
           handleOpenFolderRef.current();
         }
+      } else if (isCmdOrCtrl && (e.key === '`' || e.key.toLowerCase() === 'j')) {
+        e.preventDefault();
+        setIsTerminalOpen((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -619,12 +739,14 @@ export default function App() {
         />
 
         {/* Center & Right: Editor Area + Integrated Terminal */}
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col h-full overflow-hidden">
           <EditorArea
             tabs={tabs}
             activeTabPath={activeTabPath}
             workspaceInfo={workspaceInfo}
             onOpenFolder={handleOpenFolder}
+            onCreateItem={handleCreateItem}
+            onOpenFile={handleOpenFile}
             onSelectTab={handleSelectTab}
             onCloseTab={handleCloseTab}
             onContentChange={handleContentChange}

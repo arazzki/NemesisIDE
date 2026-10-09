@@ -113,6 +113,171 @@ function getFileTree(dir, relativeTo = WORKSPACE_DIR) {
     });
 }
 
+// -------------------------------------------------------------
+// Real-time File Watcher & Server-Sent Events (SSE)
+// -------------------------------------------------------------
+const sseClients = new Set();
+let workspaceWatcher = null;
+const recentlySavedFiles = new Map(); // normalizedRelPath -> timestamp
+const pendingChanges = new Map();     // normalizedRelPath -> { eventType, timestamp }
+let debounceTimer = null;
+
+function broadcastSSE(data) {
+  const payload = `data: ${JSON.stringify(data)}\n\n`;
+  for (const client of sseClients) {
+    try {
+      client.write(payload);
+    } catch (e) {
+      sseClients.delete(client);
+    }
+  }
+}
+
+function isIgnoredFile(relPath) {
+  if (!relPath) return true;
+  const n = relPath.replace(/\\/g, '/').toLowerCase();
+  return (
+    n.startsWith('.git') ||
+    n.includes('/.git/') ||
+    n.startsWith('node_modules') ||
+    n.includes('/node_modules/') ||
+    n.startsWith('.nemesis-ide') ||
+    n.startsWith('dist/') ||
+    n.startsWith('release/') ||
+    n.startsWith('build/') ||
+    n.endsWith('.tmp') ||
+    n.endsWith('.swp') ||
+    n.endsWith('~') ||
+    n.endsWith('.crswap') ||
+    n.endsWith('.blockmap')
+  );
+}
+
+function processPendingChanges() {
+  if (pendingChanges.size === 0) return;
+
+  const entries = Array.from(pendingChanges.entries());
+  pendingChanges.clear();
+
+  let hasTreeChange = false;
+
+  for (const [relPath, { eventType }] of entries) {
+    // If saved by Nemesis IDE within 1500ms, ignore self-save
+    const lastSelfSave = recentlySavedFiles.get(relPath);
+    if (lastSelfSave && Date.now() - lastSelfSave < 1500) {
+      continue;
+    }
+
+    const fullPath = path.join(WORKSPACE_DIR, relPath);
+    let exists = false;
+    let isDir = false;
+
+    try {
+      if (fs.existsSync(fullPath)) {
+        exists = true;
+        isDir = fs.statSync(fullPath).isDirectory();
+      }
+    } catch (e) {
+      exists = false;
+    }
+
+    if (eventType === 'rename' || !exists || isDir) {
+      hasTreeChange = true;
+    }
+
+    if (exists && !isDir) {
+      broadcastSSE({
+        type: 'file-changed',
+        path: relPath,
+        name: path.basename(relPath),
+        exists: true
+      });
+    } else if (!exists) {
+      broadcastSSE({
+        type: 'file-deleted',
+        path: relPath,
+        name: path.basename(relPath),
+        exists: false
+      });
+    }
+  }
+
+  if (hasTreeChange) {
+    broadcastSSE({ type: 'tree-changed' });
+  }
+}
+
+function startWorkspaceWatcher(targetDir) {
+  if (workspaceWatcher) {
+    try {
+      workspaceWatcher.close();
+    } catch (e) {}
+    workspaceWatcher = null;
+  }
+
+  if (!fs.existsSync(targetDir)) return;
+
+  try {
+    workspaceWatcher = fs.watch(targetDir, { recursive: true }, (eventType, filename) => {
+      if (!filename || isIgnoredFile(filename)) return;
+
+      const normalized = filename.replace(/\\/g, '/');
+      pendingChanges.set(normalized, { eventType, timestamp: Date.now() });
+
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(processPendingChanges, 150);
+    });
+
+    workspaceWatcher.on('error', (err) => {
+      console.warn('[Watcher] Error:', err.message);
+    });
+
+    console.log(`[Watcher] Mengawasi perubahan file di: ${targetDir}`);
+  } catch (err) {
+    console.warn('[Watcher] Gagal memulai fs.watch:', err.message);
+  }
+}
+
+// Start watcher for initial workspace
+startWorkspaceWatcher(WORKSPACE_DIR);
+
+// Clean up recentlySavedFiles periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of recentlySavedFiles.entries()) {
+    if (now - v > 5000) recentlySavedFiles.delete(k);
+  }
+}, 10000);
+
+// SSE endpoint for real-time workspace file events
+app.get('/api/events', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*'
+  });
+
+  sseClients.add(res);
+
+  // Send initial connected payload
+  res.write(`data: ${JSON.stringify({ type: 'connected', workspace: WORKSPACE_DIR })}\n\n`);
+
+  const pingInterval = setInterval(() => {
+    try {
+      res.write(': ping\n\n');
+    } catch (e) {
+      clearInterval(pingInterval);
+      sseClients.delete(res);
+    }
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(pingInterval);
+    sseClients.delete(res);
+  });
+});
+
 // 0. Get current active workspace
 app.get('/api/workspace', (req, res) => {
   res.json({
@@ -138,6 +303,12 @@ app.post('/api/workspace', (req, res) => {
 
     WORKSPACE_DIR = targetDir;
     saveWorkspace(WORKSPACE_DIR);
+    startWorkspaceWatcher(WORKSPACE_DIR);
+    broadcastSSE({
+      type: 'workspace-changed',
+      path: WORKSPACE_DIR,
+      name: path.basename(WORKSPACE_DIR) || WORKSPACE_DIR
+    });
 
     res.json({
       success: true,
@@ -170,6 +341,12 @@ app.post('/api/workspace/pick', (req, res) => {
       if (selected && fs.existsSync(selected) && fs.statSync(selected).isDirectory()) {
         WORKSPACE_DIR = path.resolve(selected);
         saveWorkspace(WORKSPACE_DIR);
+        startWorkspaceWatcher(WORKSPACE_DIR);
+        broadcastSSE({
+          type: 'workspace-changed',
+          path: WORKSPACE_DIR,
+          name: path.basename(WORKSPACE_DIR) || WORKSPACE_DIR
+        });
         return res.json({
           success: true,
           path: WORKSPACE_DIR,
@@ -218,6 +395,10 @@ app.post('/api/file', (req, res) => {
     if (!reqPath) return res.status(400).json({ error: 'Path is required' });
     const filePath = getSafePath(reqPath);
     
+    // Mark as self-saved so watcher ignores it
+    const normalizedRel = reqPath.replace(/\\/g, '/');
+    recentlySavedFiles.set(normalizedRel, Date.now());
+
     ensureDir(path.dirname(filePath));
     fs.writeFileSync(filePath, content ?? '', 'utf8');
     res.json({ success: true, message: 'File saved successfully' });
@@ -246,6 +427,7 @@ app.post('/api/create', (req, res) => {
       fs.writeFileSync(targetPath, templateContent, 'utf8');
     }
 
+    broadcastSSE({ type: 'tree-changed' });
     res.json({ success: true, message: `${type} created successfully` });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -269,6 +451,7 @@ app.post('/api/delete', (req, res) => {
       fs.unlinkSync(targetPath);
     }
 
+    broadcastSSE({ type: 'tree-changed' });
     res.json({ success: true, message: 'Item deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

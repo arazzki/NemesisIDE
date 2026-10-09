@@ -745,6 +745,36 @@ export const languageSnippets = {
       detail: '<button>...</button>',
       insertText: '<button type="${1:button}">${2:Click me}</button>',
       documentation: 'HTML Button'
+    },
+    {
+      label: 'class',
+      detail: 'class="..."',
+      insertText: 'class="${1}"',
+      documentation: 'HTML class attribute'
+    },
+    {
+      label: 'href',
+      detail: 'href="..."',
+      insertText: 'href="${1:#}"',
+      documentation: 'HTML href attribute'
+    },
+    {
+      label: 'src',
+      detail: 'src="..."',
+      insertText: 'src="${1}"',
+      documentation: 'HTML src attribute'
+    },
+    {
+      label: 'id',
+      detail: 'id="..."',
+      insertText: 'id="${1}"',
+      documentation: 'HTML id attribute'
+    },
+    {
+      label: 'style',
+      detail: 'style="..."',
+      insertText: 'style="${1}"',
+      documentation: 'HTML style attribute'
     }
   ],
 

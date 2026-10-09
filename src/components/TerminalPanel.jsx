@@ -152,7 +152,7 @@ export default function TerminalPanel({
         backgroundColor: theme.terminal.bg,
         borderColor: theme.terminal.border
       }}
-      className={`border-t flex flex-col z-20 select-none transition-all duration-75 relative ${
+      className={`border-t flex flex-col shrink-0 z-20 select-none transition-all duration-75 relative ${
         isMaximized ? 'absolute inset-x-0 bottom-0 top-[36px] !h-auto' : ''
       }`}
     >

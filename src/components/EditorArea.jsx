@@ -2,10 +2,11 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { 
   X, Play, Save, Code, FolderOpen, Sparkles, Globe, 
-  Monitor, Tablet, Smartphone, RotateCw, ExternalLink 
+  Monitor, Tablet, Smartphone, RotateCw, ExternalLink, FilePlus 
 } from 'lucide-react';
 import { getLanguageFromPath, getFileBadgeColor, getLanguageName } from '../utils/languageHelper';
 import { registerAllSnippets } from '../utils/snippets';
+import { registerHtmlCompletions, setupHtmlAutoCloseAndQuotes } from '../utils/htmlHelper';
 import { getTheme } from '../utils/themeHelper';
 
 export default function EditorArea({
@@ -13,6 +14,7 @@ export default function EditorArea({
   activeTabPath,
   workspaceInfo,
   onOpenFolder,
+  onCreateItem,
   onSelectTab,
   onCloseTab,
   onContentChange,
@@ -27,6 +29,10 @@ export default function EditorArea({
   const activeTab = tabs.find((t) => t.path === activeTabPath);
   const editorRef = useRef(null);
   const splitAreaRef = useRef(null);
+
+  // Quick file creation in empty board state
+  const [showNewFileInput, setShowNewFileInput] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
 
   // Live Web Preview states
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -241,6 +247,9 @@ export default function EditorArea({
 
     // Register all default code snippets (sout + tab, clg + tab, pr + tab, etc.)
     registerAllSnippets(monaco);
+
+    // Register rich HTML tag & attribute completion providers
+    registerHtmlCompletions(monaco);
   };
 
   // Always keep latest refs to avoid stale closures in Monaco addCommand
@@ -252,6 +261,9 @@ export default function EditorArea({
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
+
+    // Enable HTML Auto-Close Tag on '>' and Auto-Quote on '='
+    setupHtmlAutoCloseAndQuotes(editor, monaco);
 
     // Track cursor changes for Status Bar
     editor.onDidChangeCursorPosition((e) => {
@@ -281,7 +293,7 @@ export default function EditorArea({
   return (
     <div 
       style={{ backgroundColor: theme.editor.bg }} 
-      className="flex-1 flex flex-col h-full overflow-hidden transition-colors"
+      className="flex-1 min-h-0 flex flex-col h-full overflow-hidden transition-colors"
     >
       {/* Tab Bar & Action Buttons Header */}
       <div 
@@ -419,7 +431,7 @@ export default function EditorArea({
       </div>
 
       {/* Editor Main Content or Welcome Screen */}
-      <div ref={splitAreaRef} className="flex-1 relative overflow-hidden">
+      <div ref={splitAreaRef} className="flex-1 min-h-0 relative overflow-hidden">
         {activeTab ? (
           <div className="flex h-full w-full overflow-hidden">
             {/* Left Panel: Monaco Editor */}
@@ -448,6 +460,10 @@ export default function EditorArea({
                   cursorBlinking: 'smooth',
                   cursorSmoothCaretAnimation: 'on',
                   formatOnPaste: true,
+                  formatOnType: true,
+                  autoClosingBrackets: 'always',
+                  autoClosingQuotes: 'always',
+                  autoClosingOvertype: 'always',
                   bracketPairColorization: { enabled: true },
                   automaticLayout: true,
                   fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
@@ -455,7 +471,7 @@ export default function EditorArea({
                   scrollBeyondLastLine: false,
                   tabCompletion: 'on',
                   snippetSuggestions: 'top',
-                  quickSuggestions: { other: true, comments: false, strings: false },
+                  quickSuggestions: { other: true, comments: false, strings: true },
                   suggestOnTriggerCharacters: true,
                   acceptSuggestionOnEnter: 'on',
                 }}
@@ -615,91 +631,229 @@ export default function EditorArea({
               backgroundColor: theme.editor.emptyBg, 
               color: theme.editor.emptyText 
             }} 
-            className="h-full flex flex-col items-center justify-center select-none p-6 transition-colors"
+            className="h-full w-full overflow-y-auto overflow-x-hidden flex flex-col items-center p-4 sm:p-6 select-none transition-colors"
           >
-            <div className="flex flex-col items-center mb-3">
-              <img 
-                src="/banner.png" 
-                alt="Nemesis IDE" 
-                className="w-80 h-auto object-contain rounded-xl drop-shadow-[0_12px_28px_rgba(0,0,0,0.5)] border border-amber-500/20" 
-              />
-            </div>
-            <p 
-              style={{ color: theme.editor.emptyMuted }} 
-              className="text-xs mb-5 text-center max-w-sm"
-            >
-              Tarik & lepaskan (Drag & drop) folder dari Desktop ke sini, atau klik tombol di bawah untuk membuka project.
-            </p>
+            <div className="my-auto flex flex-col items-center w-full max-w-md text-center py-2 shrink-0">
+              {/* Circular Emblem Logo */}
+              <div className="relative mb-3 flex items-center justify-center">
+                <div 
+                  style={{
+                    boxShadow: theme.isLight 
+                      ? '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' 
+                      : '0 12px 30px -5px rgba(0, 0, 0, 0.6), 0 0 20px rgba(59, 130, 246, 0.15)'
+                  }}
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden ring-2 ring-blue-500/30 flex items-center justify-center transition-all duration-300 hover:scale-105 cursor-pointer bg-zinc-900/40"
+                  title="Nemesis IDE"
+                >
+                  <img 
+                    src="/emblem.png" 
+                    alt="Nemesis IDE" 
+                    className="w-full h-full object-contain rounded-full" 
+                  />
+                </div>
+              </div>
 
-            <button
-              onClick={() => onOpenFolder && onOpenFolder()}
-              className="mb-6 flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-lg shadow-blue-500/20 border border-blue-400/30 transition-all hover:scale-105"
-            >
-              <FolderOpen size={15} className="text-amber-300" />
-              <span>Buka Folder dari Desktop / PC</span>
-              <kbd className="bg-white/20 text-blue-100 text-[10px] px-1.5 py-0.5 rounded font-mono ml-1.5">Ctrl+O</kbd>
-            </button>
+              {/* Title & Workspace Information */}
+              <h2 
+                style={{ color: theme.editor.emptyText }} 
+                className="text-base sm:text-lg font-bold tracking-tight mb-1"
+              >
+                Nemesis IDE
+              </h2>
 
-            <div 
-              style={{ 
-                backgroundColor: theme.editor.shortcutBadgeBg, 
-                borderColor: theme.editor.shortcutBadgeBorder 
-              }} 
-              className="border rounded-lg p-4 w-72 text-xs space-y-2.5 shadow-sm"
-            >
-              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
-                <span>Buka Folder Project</span>
-                <kbd 
-                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#2563eb' : '#93c5fd' }} 
-                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+              {workspaceInfo?.name ? (
+                <>
+                  <div 
+                    title={workspaceInfo.path || workspaceInfo.name}
+                    className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-medium mb-2.5 border max-w-sm truncate shadow-xs transition-colors ${
+                      theme.isLight
+                        ? 'bg-blue-50/90 text-blue-700 border-blue-200'
+                        : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                    }`}
+                  >
+                    <FolderOpen size={13} className="text-amber-500 shrink-0" />
+                    <span className="truncate">
+                      Folder aktif:{' '}
+                      <span 
+                        style={{ color: theme.isLight ? '#1e3a8a' : '#ffffff' }}
+                        className="font-bold ml-0.5"
+                      >
+                        {workspaceInfo.name}
+                      </span>
+                    </span>
+                  </div>
+                  <p 
+                    style={{ color: theme.editor.emptyMuted }} 
+                    className="text-xs mb-3.5 text-center max-w-sm"
+                  >
+                    Pilih file di panel Explorer sebelah kiri untuk mulai coding, atau gunakan aksi di bawah.
+                  </p>
+                </>
+              ) : (
+                <p 
+                  style={{ color: theme.editor.emptyMuted }} 
+                  className="text-xs mb-3.5 text-center max-w-sm"
                 >
-                  Ctrl + O
-                </kbd>
+                  Tarik & lepaskan folder ke sini, atau klik tombol di bawah untuk membuka project.
+                </p>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+                {workspaceInfo?.name && onCreateItem && !showNewFileInput && (
+                  <button
+                    onClick={() => setShowNewFileInput(true)}
+                    className="flex items-center space-x-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-md shadow-blue-500/20 border border-blue-400/30 transition-all hover:scale-105"
+                  >
+                    <FilePlus size={13} className="text-blue-200" />
+                    <span>Buat File Baru</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => onOpenFolder && onOpenFolder()}
+                  style={{
+                    backgroundColor: workspaceInfo?.name ? theme.editor.shortcutBadgeBg : undefined,
+                    borderColor: workspaceInfo?.name ? theme.editor.shortcutBadgeBorder : undefined,
+                    color: workspaceInfo?.name ? theme.editor.emptyText : undefined
+                  }}
+                  className={`flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:scale-105 ${
+                    workspaceInfo?.name
+                      ? `border shadow-sm ${theme.isLight ? 'hover:bg-zinc-100 text-zinc-800' : 'hover:bg-zinc-700/50 text-zinc-200'}`
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/20 border border-blue-400/30'
+                  }`}
+                >
+                  <FolderOpen size={13} className="text-amber-500" />
+                  <span>{workspaceInfo?.name ? 'Ganti Folder Project' : 'Buka Folder Project'}</span>
+                  <kbd className={`${theme.isLight ? 'bg-zinc-200/80 text-zinc-700' : 'bg-white/20 text-blue-100'} text-[10px] px-1.5 py-0.5 rounded font-mono ml-1`}>Ctrl+O</kbd>
+                </button>
               </div>
-              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
-                <span>Format Dokumen</span>
-                <kbd 
-                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#2563eb' : '#93c5fd' }} 
-                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+
+              {/* Inline Create File Prompt */}
+              {showNewFileInput && (
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!newFileName.trim()) return;
+                    if (onCreateItem) {
+                      onCreateItem(newFileName.trim(), 'file');
+                    }
+                    setNewFileName('');
+                    setShowNewFileInput(false);
+                  }} 
+                  className="flex items-center space-x-2 mb-4 w-full max-w-xs"
                 >
-                  Shift + Alt + F
-                </kbd>
-              </div>
-              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
-                <span>Code Snippet</span>
-                <kbd 
-                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#2563eb' : '#93c5fd' }} 
-                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+                  <input
+                    type="text"
+                    autoFocus
+                    value={newFileName}
+                    onChange={(e) => setNewFileName(e.target.value)}
+                    placeholder="nama_file (contoh: main.py)"
+                    className={`flex-1 border border-blue-500 rounded px-2.5 py-1 text-xs focus:outline-none shadow-inner ${
+                      theme.isLight ? 'bg-white text-zinc-900 placeholder-zinc-400' : 'bg-zinc-900 text-white placeholder-zinc-500'
+                    }`}
+                  />
+                  <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-2.5 py-1 rounded font-medium">
+                    Buat
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => { setShowNewFileInput(false); setNewFileName(''); }} 
+                    className={`${theme.isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-400 hover:text-white'} text-xs px-1.5 py-1`}
+                  >
+                    Batal
+                  </button>
+                </form>
+              )}
+
+              {/* Keyboard Shortcuts 2-Column Grid */}
+              <div 
+                style={{ 
+                  backgroundColor: theme.editor.shortcutBadgeBg, 
+                  borderColor: theme.editor.shortcutBadgeBorder 
+                }} 
+                className="border rounded-xl p-3 sm:p-3.5 w-full shadow-sm text-xs"
+              >
+                <div 
+                  className="text-[10px] font-semibold uppercase tracking-wider mb-2 text-left px-1" 
+                  style={{ color: theme.editor.emptyMuted }}
                 >
-                  sout, clg, pr + Tab
-                </kbd>
-              </div>
-              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
-                <span>Simpan File</span>
-                <kbd 
-                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#374151' : '#e4e4e7' }} 
-                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
-                >
-                  Ctrl + S
-                </kbd>
-              </div>
-              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
-                <span>Jalankan Script</span>
-                <kbd 
-                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#374151' : '#e4e4e7' }} 
-                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
-                >
-                  Tombol Run
-                </kbd>
-              </div>
-              <div className="flex justify-between items-center" style={{ color: theme.editor.emptyText }}>
-                <span>Toggle Terminal</span>
-                <kbd 
-                  style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#374151' : '#e4e4e7' }} 
-                  className="px-1.5 py-0.5 rounded text-[11px] font-mono"
-                >
-                  Panel Bawah
-                </kbd>
+                  Pintasan Keyboard (Shortcuts)
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-left">
+                  <div 
+                    className={`flex justify-between items-center px-2 py-1.5 rounded-md ${theme.isLight ? 'bg-zinc-100 hover:bg-zinc-200/60' : 'bg-black/15 hover:bg-black/25'}`} 
+                    style={{ color: theme.editor.emptyText }}
+                  >
+                    <span className="text-[11px] truncate mr-2">Buka Folder</span>
+                    <kbd 
+                      style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#2563eb' : '#93c5fd' }} 
+                      className="px-1.5 py-0.5 rounded text-[10px] font-mono shrink-0"
+                    >
+                      Ctrl + O
+                    </kbd>
+                  </div>
+                  <div 
+                    className={`flex justify-between items-center px-2 py-1.5 rounded-md ${theme.isLight ? 'bg-zinc-100 hover:bg-zinc-200/60' : 'bg-black/15 hover:bg-black/25'}`} 
+                    style={{ color: theme.editor.emptyText }}
+                  >
+                    <span className="text-[11px] truncate mr-2">Simpan File</span>
+                    <kbd 
+                      style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#374151' : '#e4e4e7' }} 
+                      className="px-1.5 py-0.5 rounded text-[10px] font-mono shrink-0"
+                    >
+                      Ctrl + S
+                    </kbd>
+                  </div>
+                  <div 
+                    className={`flex justify-between items-center px-2 py-1.5 rounded-md ${theme.isLight ? 'bg-zinc-100 hover:bg-zinc-200/60' : 'bg-black/15 hover:bg-black/25'}`} 
+                    style={{ color: theme.editor.emptyText }}
+                  >
+                    <span className="text-[11px] truncate mr-2">Format Dokumen</span>
+                    <kbd 
+                      style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#2563eb' : '#93c5fd' }} 
+                      className="px-1.5 py-0.5 rounded text-[10px] font-mono shrink-0"
+                    >
+                      Shift + Alt + F
+                    </kbd>
+                  </div>
+                  <div 
+                    className={`flex justify-between items-center px-2 py-1.5 rounded-md ${theme.isLight ? 'bg-zinc-100 hover:bg-zinc-200/60' : 'bg-black/15 hover:bg-black/25'}`} 
+                    style={{ color: theme.editor.emptyText }}
+                  >
+                    <span className="text-[11px] truncate mr-2">Code Snippet</span>
+                    <kbd 
+                      style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#2563eb' : '#93c5fd' }} 
+                      className="px-1.5 py-0.5 rounded text-[10px] font-mono shrink-0"
+                    >
+                      sout, clg + Tab
+                    </kbd>
+                  </div>
+                  <div 
+                    className={`flex justify-between items-center px-2 py-1.5 rounded-md ${theme.isLight ? 'bg-zinc-100 hover:bg-zinc-200/60' : 'bg-black/15 hover:bg-black/25'}`} 
+                    style={{ color: theme.editor.emptyText }}
+                  >
+                    <span className="text-[11px] truncate mr-2">Jalankan Script</span>
+                    <kbd 
+                      style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#374151' : '#e4e4e7' }} 
+                      className="px-1.5 py-0.5 rounded text-[10px] font-mono shrink-0"
+                    >
+                      Tombol Run
+                    </kbd>
+                  </div>
+                  <div 
+                    className={`flex justify-between items-center px-2 py-1.5 rounded-md ${theme.isLight ? 'bg-zinc-100 hover:bg-zinc-200/60' : 'bg-black/15 hover:bg-black/25'}`} 
+                    style={{ color: theme.editor.emptyText }}
+                  >
+                    <span className="text-[11px] truncate mr-2">Toggle Terminal</span>
+                    <kbd 
+                      style={{ backgroundColor: theme.isLight ? '#e5e7eb' : '#27272a', color: theme.isLight ? '#374151' : '#e4e4e7' }} 
+                      className="px-1.5 py-0.5 rounded text-[10px] font-mono shrink-0"
+                    >
+                      Ctrl + `
+                    </kbd>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
