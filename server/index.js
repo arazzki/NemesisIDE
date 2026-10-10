@@ -122,6 +122,11 @@ const recentlySavedFiles = new Map(); // normalizedRelPath -> timestamp
 const pendingChanges = new Map();     // normalizedRelPath -> { eventType, timestamp }
 let debounceTimer = null;
 
+function normalizeWatchPath(p) {
+  if (!p) return '';
+  return p.replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
+}
+
 function broadcastSSE(data) {
   const payload = `data: ${JSON.stringify(data)}\n\n`;
   for (const client of sseClients) {
@@ -162,9 +167,10 @@ function processPendingChanges() {
   let hasTreeChange = false;
 
   for (const [relPath, { eventType }] of entries) {
-    // If saved by Nemesis IDE within 1500ms, ignore self-save
-    const lastSelfSave = recentlySavedFiles.get(relPath);
-    if (lastSelfSave && Date.now() - lastSelfSave < 1500) {
+    // If saved by Nemesis IDE within 6000ms, ignore self-save echo (with case-insensitive normalization)
+    const normKey = normalizeWatchPath(relPath);
+    const lastSelfSave = recentlySavedFiles.get(normKey);
+    if (lastSelfSave && Date.now() - lastSelfSave < 6000) {
       continue;
     }
 
@@ -245,7 +251,7 @@ startWorkspaceWatcher(WORKSPACE_DIR);
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of recentlySavedFiles.entries()) {
-    if (now - v > 5000) recentlySavedFiles.delete(k);
+    if (now - v > 15000) recentlySavedFiles.delete(k);
   }
 }, 10000);
 
@@ -396,8 +402,8 @@ app.post('/api/file', (req, res) => {
     const filePath = getSafePath(reqPath);
     
     // Mark as self-saved so watcher ignores it
-    const normalizedRel = reqPath.replace(/\\/g, '/');
-    recentlySavedFiles.set(normalizedRel, Date.now());
+    const normKey = normalizeWatchPath(reqPath);
+    recentlySavedFiles.set(normKey, Date.now());
 
     ensureDir(path.dirname(filePath));
     fs.writeFileSync(filePath, content ?? '', 'utf8');

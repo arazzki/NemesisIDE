@@ -7,11 +7,17 @@ import TerminalPanel from './components/TerminalPanel';
 import StatusBar from './components/StatusBar';
 import { getTheme } from './utils/themeHelper';
 
+const normalizeText = (str) => (str || '').replace(/\r\n/g, '\n');
+const normalizePath = (p) => (p || '').replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
+
 export default function App() {
   const [activeView, setActiveView] = useState('explorer');
   const [tree, setTree] = useState([]);
   const [tabs, setTabs] = useState([]);
   const [activeTabPath, setActiveTabPath] = useState(null);
+  
+  const recentSavesRef = useRef(new Map()); // normPath -> timestamp of last self-save
+  const savingFilesRef = useRef(new Set()); // normPath currently in-flight
   
   const [isTerminalOpen, setIsTerminalOpen] = useState(true);
   const [terminalOutput, setTerminalOutput] = useState('');
@@ -127,9 +133,10 @@ export default function App() {
 
   // Open a file into a tab
   const handleOpenFile = async (filePath) => {
-    const existingTab = tabs.find((t) => t.path === filePath);
+    const normTarget = normalizePath(filePath);
+    const existingTab = tabs.find((t) => normalizePath(t.path) === normTarget);
     if (existingTab) {
-      setActiveTabPath(filePath);
+      setActiveTabPath(existingTab.path);
       return;
     }
 
@@ -144,8 +151,11 @@ export default function App() {
           originalContent: data.content,
           isDirty: false
         };
-        setTabs((prev) => [...prev, newTab]);
-        setActiveTabPath(filePath);
+        setTabs((prev) => {
+          if (prev.some((t) => normalizePath(t.path) === normTarget)) return prev;
+          return [...prev, newTab];
+        });
+        setActiveTabPath(data.path);
       } else {
         alert(`Gagal membuka file: ${data.error}`);
       }
@@ -174,23 +184,36 @@ export default function App() {
 
   // Handle external file changes (e.g. edited in VS Code, Git, or external tool)
   const handleReloadExternalFile = useCallback(async (filePath) => {
-    const normPath = (filePath || '').replace(/\\/g, '/');
+    const normKey = normalizePath(filePath);
+    if (!normKey) return;
+
+    // Ignore self-saves from Nemesis IDE within 6000ms
+    const lastSaved = recentSavesRef.current.get(normKey);
+    if (lastSaved && Date.now() - lastSaved < 6000) return;
+
     const existingTab = tabsRef.current.find(
-      (t) => t.path === normPath || t.path.replace(/\\/g, '/') === normPath
+      (t) => normalizePath(t.path) === normKey
     );
     if (!existingTab) return;
 
+    // NEVER silently overwrite a dirty tab with unsaved user changes!
+    if (existingTab.isDirty) return;
+
     try {
-      const res = await fetch(`/api/file?path=${encodeURIComponent(normPath)}`);
+      const res = await fetch(`/api/file?path=${encodeURIComponent(existingTab.path)}`);
       const data = await res.json();
       if (data.success) {
+        // Do not reload if content is identical (ignore CRLF vs LF differences)
+        if (normalizeText(existingTab.content) === normalizeText(data.content)) {
+          return;
+        }
+
         setTabs((prev) =>
           prev.map((t) => {
-            const isMatch = t.path === normPath || t.path.replace(/\\/g, '/') === normPath;
-            if (!isMatch) return t;
+            if (normalizePath(t.path) !== normKey) return t;
 
-            // Only update if not dirty and content actually differs
-            if (!t.isDirty && t.content !== data.content) {
+            // Only update if tab is still clean and content actually differs
+            if (!t.isDirty && normalizeText(t.content) !== normalizeText(data.content)) {
               return {
                 ...t,
                 content: data.content,
@@ -202,7 +225,7 @@ export default function App() {
           })
         );
 
-        if (!existingTab.isDirty && existingTab.content !== data.content) {
+        if (!existingTab.isDirty && normalizeText(existingTab.content) !== normalizeText(data.content)) {
           setSaveStatus(`Diperbarui dari luar: ${existingTab.name}`);
           setTimeout(() => setSaveStatus(''), 2500);
         }
@@ -257,22 +280,33 @@ export default function App() {
       // 1. Refresh file tree in background
       fetchTree();
 
-      // 2. Check all clean open tabs for disk modifications
+      // 2. Check all clean open tabs for disk modifications (skip dirty tabs & recently self-saved files)
       const currentTabs = tabsRef.current;
-      const cleanTabs = currentTabs.filter((t) => !t.isDirty);
+      const cleanTabs = currentTabs.filter((t) => {
+        if (t.isDirty) return false;
+        const normKey = normalizePath(t.path);
+        const lastSaved = recentSavesRef.current.get(normKey);
+        if (lastSaved && Date.now() - lastSaved < 6000) return false;
+        return true;
+      });
       if (cleanTabs.length === 0) return;
 
       for (const tab of cleanTabs) {
         try {
           const res = await fetch(`/api/file?path=${encodeURIComponent(tab.path)}`);
           const data = await res.json();
-          if (data.success && data.content !== tab.originalContent) {
+          if (data.success && normalizeText(data.content) !== normalizeText(tab.originalContent)) {
             setTabs((prev) =>
-              prev.map((t) =>
-                t.path === tab.path && !t.isDirty
-                  ? { ...t, content: data.content, originalContent: data.content }
-                  : t
-              )
+              prev.map((t) => {
+                if (normalizePath(t.path) !== normalizePath(tab.path) || t.isDirty) return t;
+                if (normalizeText(t.content) === normalizeText(data.content)) return t;
+                return {
+                  ...t,
+                  content: data.content,
+                  originalContent: data.content,
+                  isDirty: false
+                };
+              })
             );
             setSaveStatus(`Diperbarui dari disk: ${tab.name}`);
             setTimeout(() => setSaveStatus(''), 2500);
@@ -327,10 +361,11 @@ export default function App() {
     setTabs((prev) =>
       prev.map((tab) => {
         if (tab.path === path) {
+          const isDirty = normalizeText(newContent) !== normalizeText(tab.originalContent);
           return {
             ...tab,
             content: newContent,
-            isDirty: newContent !== tab.originalContent
+            isDirty
           };
         }
         return tab;
@@ -341,22 +376,43 @@ export default function App() {
   // Save current active file
   const handleSaveFile = async (path = activeTabPath, contentOverride = null) => {
     const targetPath = path || activeTabPath;
-    const tab = tabs.find((t) => t.path === targetPath);
-    if (!tab) return;
-    const finalContent = contentOverride !== null ? contentOverride : tab.content;
+    if (!targetPath) return;
+
+    // Use tabsRef to get freshest tab data and avoid stale closure
+    const currentTab = tabsRef.current.find((t) => t.path === targetPath);
+    if (!currentTab) return;
+
+    const normKey = normalizePath(targetPath);
+    if (savingFilesRef.current.has(normKey)) return;
+    savingFilesRef.current.add(normKey);
+
+    const finalContent = contentOverride !== null ? contentOverride : currentTab.content;
+    recentSavesRef.current.set(normKey, Date.now());
 
     try {
       const res = await fetch('/api/file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: tab.path, content: finalContent })
+        body: JSON.stringify({ path: targetPath, content: finalContent })
       });
       const data = await res.json();
       if (data.success) {
+        recentSavesRef.current.set(normKey, Date.now());
         setTabs((prev) =>
-          prev.map((t) => (t.path === targetPath ? { ...t, content: finalContent, originalContent: finalContent, isDirty: false } : t))
+          prev.map((t) => {
+            if (t.path !== targetPath) return t;
+            // CRITICAL: Check if user continued typing while save request was in-flight
+            const hasNewerEdits = normalizeText(t.content) !== normalizeText(finalContent);
+            return {
+              ...t,
+              // If user typed newer edits during save, KEEP t.content! DO NOT rollback!
+              content: hasNewerEdits ? t.content : finalContent,
+              originalContent: finalContent,
+              isDirty: hasNewerEdits
+            };
+          })
         );
-        setSaveStatus(`Tersimpan: ${tab.name}`);
+        setSaveStatus(`Tersimpan: ${currentTab.name}`);
         setTimeout(() => setSaveStatus(''), 2500);
       } else {
         alert(`Gagal menyimpan file: ${data.error}`);
@@ -364,22 +420,28 @@ export default function App() {
     } catch (err) {
       console.error('Failed to save file:', err);
       alert('Koneksi terputus saat menyimpan file.');
+    } finally {
+      savingFilesRef.current.delete(normKey);
     }
   };
 
   // Save ALL dirty tabs at once (Crucial for multi-file projects like Java/C++/C)
   const handleSaveAllDirty = async () => {
-    const dirtyTabs = tabs.filter((t) => t.isDirty);
+    const dirtyTabs = tabsRef.current.filter((t) => t.isDirty);
     if (dirtyTabs.length === 0) return;
 
     await Promise.all(
       dirtyTabs.map(async (tab) => {
+        const normKey = normalizePath(tab.path);
+        recentSavesRef.current.set(normKey, Date.now());
+        const contentToSave = tab.content;
         try {
           await fetch('/api/file', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path: tab.path, content: tab.content })
+            body: JSON.stringify({ path: tab.path, content: contentToSave })
           });
+          recentSavesRef.current.set(normKey, Date.now());
         } catch (err) {
           console.error('Failed to auto-save tab:', tab.path, err);
         }
@@ -387,7 +449,17 @@ export default function App() {
     );
 
     setTabs((prev) =>
-      prev.map((t) => ({ ...t, originalContent: t.content, isDirty: false }))
+      prev.map((t) => {
+        const matchingDirty = dirtyTabs.find((d) => d.path === t.path);
+        if (!matchingDirty) return t;
+        const hasNewerEdits = normalizeText(t.content) !== normalizeText(matchingDirty.content);
+        return {
+          ...t,
+          content: hasNewerEdits ? t.content : matchingDirty.content,
+          originalContent: matchingDirty.content,
+          isDirty: hasNewerEdits
+        };
+      })
     );
   };
 
@@ -434,7 +506,10 @@ export default function App() {
     if (!currentTab || !currentTab.isDirty) return;
 
     const timer = setTimeout(() => {
-      handleSaveFile(currentTab.path);
+      const latestTab = tabsRef.current.find((t) => t.path === currentTab.path);
+      if (latestTab && latestTab.isDirty && handleSaveFileRef.current) {
+        handleSaveFileRef.current(latestTab.path);
+      }
     }, 1000);
 
     return () => clearTimeout(timer);
