@@ -2,6 +2,7 @@
  * Default Code Snippets for Nemesis IDE
  * Supports IntelliJ/VS Code style shortcuts (e.g. sout + Tab in Java, clg + Tab in JS, pr + Tab in Python, etc.)
  */
+import { syntaxSuggestions, getTriggerCharacters } from './syntaxSuggestions';
 
 export const languageSnippets = {
   java: [
@@ -794,40 +795,146 @@ export const languageSnippets = {
   ]
 };
 
+function getCompletionKind(monaco, kindStr) {
+  if (!monaco?.languages?.CompletionItemKind) return 15;
+  if (!kindStr) return monaco.languages.CompletionItemKind.Snippet;
+
+  const K = monaco.languages.CompletionItemKind;
+  if (K[kindStr] !== undefined) {
+    return K[kindStr];
+  }
+
+  switch (kindStr) {
+    case 'Property': return K.Property;
+    case 'Method': return K.Method;
+    case 'Function': return K.Function;
+    case 'Constructor': return K.Constructor;
+    case 'Field': return K.Field;
+    case 'Variable': return K.Variable;
+    case 'Class': return K.Class;
+    case 'Interface': return K.Interface;
+    case 'Module': return K.Module;
+    case 'Unit': return K.Unit;
+    case 'Value': return K.Value;
+    case 'Enum': return K.Enum;
+    case 'Keyword': return K.Keyword;
+    case 'Snippet': return K.Snippet;
+    case 'Color': return K.Color;
+    case 'File': return K.File;
+    case 'Reference': return K.Reference;
+    case 'Folder': return K.Folder;
+    case 'EnumMember': return K.EnumMember;
+    case 'Constant': return K.Constant;
+    case 'Struct': return K.Struct;
+    case 'Event': return K.Event;
+    case 'Operator': return K.Operator;
+    case 'TypeParameter': return K.TypeParameter;
+    default: return K.Property;
+  }
+}
+
 let snippetsRegistered = false;
 
 /**
- * Registers all snippets into Monaco's completion system
+ * Registers all snippets and rich syntax autocomplete into Monaco's completion system
  * @param {any} monaco 
  */
 export function registerAllSnippets(monaco) {
   if (snippetsRegistered || !monaco?.languages) return;
   snippetsRegistered = true;
 
-  Object.entries(languageSnippets).forEach(([lang, snippets]) => {
+  // Combine all language keys from languageSnippets and syntaxSuggestions
+  const allLanguages = Array.from(new Set([
+    ...Object.keys(languageSnippets),
+    ...Object.keys(syntaxSuggestions)
+  ]));
+
+  allLanguages.forEach((lang) => {
+    const syntaxList = syntaxSuggestions[lang] || [];
+    const snippetList = languageSnippets[lang] || [];
+
+    const seen = new Set();
+    const combinedItems = [];
+
+    // 1. Add syntax suggestions first (properties, methods, classes, keywords with rich metadata & filterText)
+    for (const item of syntaxList) {
+      const key = `${item.label}::${item.insertText}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        combinedItems.push(item);
+      }
+    }
+
+    // 2. Add shortcut snippets
+    for (const s of snippetList) {
+      const key = `${s.label}::${s.insertText}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        combinedItems.push({
+          ...s,
+          kind: s.kind || 'Snippet',
+          detail: s.detail ? (s.detail.startsWith('[Shortcut]') ? s.detail : `[Shortcut] ${s.detail}`) : `[Shortcut] ${s.label}`
+        });
+      }
+    }
+
+    if (combinedItems.length === 0) return;
+
+    const triggers = getTriggerCharacters(lang);
+
     monaco.languages.registerCompletionItemProvider(lang, {
+      triggerCharacters: triggers,
       provideCompletionItems: (model, position) => {
         const word = model.getWordUntilPosition(position);
+        const lineContent = model.getLineContent(position.lineNumber);
+        const textUntilPosition = lineContent.substring(0, position.column - 1);
+
+        // Compute token boundary so word prefixes (including CSS hyphens and PHP $) are fully replaced
+        let startCol = word.startColumn;
+        if (lang === 'css' || lang === 'scss' || lang === 'less') {
+          const cssToken = textUntilPosition.match(/[@a-zA-Z0-9_-]+$/);
+          if (cssToken) {
+            startCol = position.column - cssToken[0].length;
+          }
+        } else if (lang === 'php') {
+          const phpToken = textUntilPosition.match(/\$?[a-zA-Z0-9_]+$/);
+          if (phpToken) {
+            startCol = position.column - phpToken[0].length;
+          }
+        } else {
+          const defaultToken = textUntilPosition.match(/[a-zA-Z0-9_]+$/);
+          if (defaultToken) {
+            startCol = position.column - defaultToken[0].length;
+          }
+        }
+
         const range = {
           startLineNumber: position.lineNumber,
           endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn
+          startColumn: Math.max(1, startCol),
+          endColumn: Math.max(position.column, word.endColumn)
         };
 
-        const suggestions = snippets.map((s) => ({
-          label: s.label,
-          kind: monaco.languages.CompletionItemKind.Snippet,
-          detail: `[Shortcut] ${s.detail}`,
-          documentation: s.documentation,
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          insertText: s.insertText,
-          range: range,
-          sortText: '00_' + s.label // ensure snippets rank higher than standard tokens
-        }));
+        const suggestions = combinedItems.map((s) => {
+          const isSnippet = s.insertText && (s.insertText.includes('$') || s.kind === 'Snippet');
+          return {
+            label: s.label,
+            kind: getCompletionKind(monaco, s.kind),
+            detail: s.detail || (s.kind ? `[${s.kind}] ${s.label}` : s.label),
+            documentation: s.documentation,
+            insertTextRules: isSnippet
+              ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
+              : undefined,
+            insertText: s.insertText || s.label,
+            filterText: s.filterText || s.label,
+            range: range,
+            sortText: s.sortText || (s.kind === 'Snippet' ? `05_${s.label}` : `10_${s.label}`)
+          };
+        });
 
         return { suggestions };
       }
     });
   });
 }
+

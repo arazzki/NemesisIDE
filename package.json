@@ -1,8 +1,19 @@
 {
   "name": "nemesis-ide",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Nemesis IDE - A modern, lightweight, extensible web-native desktop IDE built with React, Monaco Editor, and Node.js",
-  "author": "arazzki",
+  "author": {
+    "name": "arazzki",
+    "email": "ariq23azzaky@gmail.com",
+    "url": "https://github.com/arazzki"
+  },
+  "contributors": [
+    {
+      "name": "arazzki",
+      "email": "ariq23azzaky@gmail.com",
+      "url": "https://github.com/arazzki"
+    }
+  ],
   "private": false,
   "license": "MIT",
   "type": "module",

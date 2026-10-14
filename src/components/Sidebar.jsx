@@ -415,7 +415,7 @@ export default function Sidebar({
             <img src="/emblem.png" alt="Nemesis Logo" className="w-10 h-10 rounded-full object-contain shadow-sm" />
             <div>
               <h2 style={{ color: theme.sidebar.inputText }} className="text-sm font-bold leading-tight">Nemesis IDE</h2>
-              <span className="text-[10px] text-blue-500 font-mono">v0.1.0 Desktop</span>
+              <span className="text-[10px] text-blue-500 font-mono">v0.1.1 Desktop</span>
             </div>
           </div>
           <div 

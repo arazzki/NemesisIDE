@@ -175,6 +175,18 @@ Feel free to check [issues page](https://github.com/arazzki/NemesisIDE/issues).
 
 ---
 
+## 👥 Contributors
+
+Thanks goes to these wonderful people:
+
+<a href="https://github.com/arazzki/NemesisIDE/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=arazzki/NemesisIDE" />
+</a>
+
+Contributions of any kind welcome!
+
+---
+
 ## 📄 License
 
 Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
